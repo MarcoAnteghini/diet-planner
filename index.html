@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.anthropic.com https://api.openai.com; img-src 'self' data:; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Strumento sperimentale per comporre un piano alimentare indicativo. Funziona nel browser, senza inviare i dati del profilo.">
+  <title>Piano alimentare settimanale</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" id="skip-link" href="#main">Vai al contenuto</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <div>
+        <h1 id="app-title">Piano alimentare settimanale</h1>
+        <p id="app-subtitle" class="subtitle"></p>
+      </div>
+      <button type="button" id="lang-toggle" class="btn btn-ghost lang-toggle" lang="en">English</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" role="note" hidden></div>
+
+  <main id="main" class="wrap" tabindex="-1">
+    <noscript>
+      <p class="callout callout-error">Questa pagina richiede JavaScript attivo. This page needs JavaScript.</p>
+    </noscript>
+    <div id="notice"></div>
+    <div id="consent"></div>
+    <div id="profile"></div>
+    <div id="plan"></div>
+    <div id="chat"></div>
+  </main>
+
+  <footer id="footer" class="site-footer wrap"></footer>
+
+  <div id="live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

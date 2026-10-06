@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Avviso legale e privacy</title>
+<meta name="description" content="Avviso, informativa privacy e fonti dei dati del generatore di piani alimentari indicativi.">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfbf9; --fg: #1d1f1e; --muted: #5b625f; --line: #dfe2de;
+    --accent: #2f6b4f; --card: #ffffff; --warn-bg: #fff6e5; --warn-line: #e8c77a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151817; --fg: #e7eae8; --muted: #a3aba7; --line: #2c3230;
+      --accent: #7cc4a0; --card: #1c201f; --warn-bg: #2b2516; --warn-line: #6b5a2c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 46rem; margin: 0 auto; padding: 1.25rem 16px 3rem; }
+  header { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  header a { color: var(--accent); }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: .5rem 0 .25rem; }
+  h2 { font-size: 1.25rem; margin: 0 0 .5rem; }
+  h3 { font-size: 1.02rem; margin: 1.1rem 0 .3rem; }
+  a { color: var(--accent); overflow-wrap: anywhere; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; margin: 1rem 0; }
+  section.warn { background: var(--warn-bg); border-color: var(--warn-line); }
+  ul { padding-left: 1.2rem; }
+  code { font-size: .9em; overflow-wrap: anywhere; }
+  .meta, footer { color: var(--muted); font-size: .9rem; }
+  .lang { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .lang button {
+    font: inherit; font-size: .9rem; padding: .35rem .8rem; border: 0; cursor: pointer;
+    background: transparent; color: var(--fg);
+  }
+  .lang button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+  nav.toc ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <a id="back" href="index.html">&larr; Torna allo strumento</a>
+    <div class="lang" role="group" aria-label="Lingua / Language">
+      <button type="button" data-lang="it" aria-pressed="true">IT</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <h1 id="title">Avviso legale e privacy</h1>
+  <p class="meta" id="meta"></p>
+
+  <noscript>
+    <p><strong>Per leggere questi testi serve JavaScript.</strong> In sintesi: i piani sono indicativi, non sono un consiglio medico e non sostituiscono un medico o un dietista; i dati del profilo restano nel tuo browser. JavaScript is required to show this page.</p>
+  </noscript>
+
+  <nav class="toc" id="toc" aria-label="Indice"></nav>
+  <div id="content"></div>
+  <footer id="footer"></footer>
+</main>
+
+<script type="module" src="js/legal-page.js"></script>
+</body>
+</html>
