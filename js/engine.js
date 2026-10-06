@@ -174,6 +174,13 @@ const SPUNTINO_SPLIT_KCAL = 220;
 const EXTRA_SLOTS = [['spuntino', 'snack'], ['pranzo', 'base_principale'], ['cena', 'base_principale']];
 /** Maximum items per meal: breakfast is drink + base + fruit (or yogurt), snack 1-2 items. */
 const MAX_ITEMS = { colazione: 3, spuntino: 2, pranzo: 6, cena: 6 };
+/** Number of plan items in a working meal: a recipe and its components count as one. */
+function mealCount(m) {
+  const keys = new Set();
+  let n = 0;
+  for (const it of m.items) { if (it.rc) keys.add(it.rc.key); else n++; }
+  return n + keys.size;
+}
 
 /** Where a protein-dense extra item may be added when the day is short on protein. */
 const PROTEIN_EXTRA_SLOTS = [['spuntino', 'snack'], ['spuntino', 'bevanda_colazione']];
@@ -359,6 +366,9 @@ export function proteinCategory(food) {
   const al = food.allergens || [];
   const c = categoryFromText(t, al);
   if (c !== 'altro') return c;
+  // group only as a last hint, and only for protein foods: "fruits, vegetables, legumes
+  // and nuts" would otherwise make every vegetable a legume
+  if (food.role !== 'secondo') return 'altro';
   return categoryFromText(String(food.group || '').toLowerCase(), []);
 }
 
@@ -690,7 +700,7 @@ const LARN_CATEGORY_KEYS = {
   salumi: ['salumi', 'carni_trasformate', 'carne_trasformata', 'carni_conservate'],
   carne_bianca: ['carne_bianca', 'carni_bianche', 'pollame'],
   uova: ['uova', 'uovo'],
-  formaggi: ['formaggi', 'formaggio', 'formaggio_fresco', 'formaggi_stagionati', 'latte_e_derivati_formaggi'],
+  formaggi: ['formaggi', 'formaggio', 'formaggio_fresco', 'formaggio_stagionato', 'formaggi_stagionati', 'latte_e_derivati_formaggi'],
 };
 
 function larnEntries(kg) {
@@ -909,7 +919,7 @@ const sumProt = (items) => items.reduce((s, it) => s + itemProt(it), 0);
  * Returns the remaining delta.
  */
 function shiftKcal(items, delta, tol = 8) {
-  const adj = items.filter((it) => kcal100(it.food) > 0 && it.food.role !== 'contorno');
+  const adj = items.filter((it) => !it.locked && kcal100(it.food) > 0 && it.food.role !== 'contorno');
   if (!adj.length) return delta;
   for (let iter = 0; iter < 4 && Math.abs(delta) > tol; iter++) {
     const dir = Math.sign(delta);
@@ -980,7 +990,7 @@ function isProteinDense(food) {
 
 /** Bring protein near the target by resizing protein-dense items (5 g steps). */
 function fixProtein(items, targetP) {
-  const dense = items.filter((it) => isProteinDense(it.food));
+  const dense = items.filter((it) => !it.locked && isProteinDense(it.food));
   let p = sumProt(items);
   for (let step = 0; step < 200; step++) {
     if (p >= targetP * 0.97 && p <= targetP * 1.15) break;
@@ -1010,7 +1020,7 @@ const isFatty = (f) => kcal100(f) > 0 && (nutr(f, 'fat') * 9) / kcal100(f) > 0.5
  * (largest fat share first), within bounds. Kcal is rebalanced by the caller.
  */
 function fixFat(items, targetF) {
-  const fatty = items.filter((it) => isFatty(it.food));
+  const fatty = items.filter((it) => !it.locked && isFatty(it.food));
   let f = sumFat(items);
   for (let step = 0; step < 100; step++) {
     if (f >= targetF * 0.85 && f <= targetF * 1.15) break;
@@ -1125,6 +1135,7 @@ function toItem(it, lang) {
   const u = unitOf(f);
   const sk = sfaKey(f);
   const o = {
+    type: 'food',
     food_id: f.id, name: foodName(f, lang), display_name: displayName(f, lang),
     role: f.role, slot: it.slot,
     grams: g,                                   // gross, as bought
@@ -1188,13 +1199,16 @@ function larnProfile(totals) {
 /** Recompute meal, day and week totals and the shopping list (mutates the given clone). */
 function finalize(plan) {
   for (const day of plan.days) {
-    for (const meal of day.meals) meal.totals = totalsOf(meal.items);
+    for (const meal of day.meals) {
+      for (const it of meal.items) if (it.type === 'recipe') recipeTotals(it);
+      meal.totals = totalsOf(meal.items);
+    }
     day.totals = totalsOf(day.meals.map((m) => m.totals));
     day.larn = larnProfile(day.totals);
   }
   plan.week_totals = totalsOf(plan.days.map((d) => d.totals));
   const agg = new Map();
-  for (const day of plan.days) for (const meal of day.meals) for (const it of meal.items) {
+  for (const day of plan.days) for (const meal of day.meals) for (const it of flatItems(meal)) {
     const e = agg.get(it.food_id) || {
       food_id: it.food_id, name: it.name, display_name: it.display_name, role: it.role,
       basis: it.basis, grams: 0, pieces: it.pieces === null ? null : 0, unit_label: it.unit_label,
@@ -1245,6 +1259,162 @@ function larnWarnings(plan) {
 function dedupe(arr) { return [...new Set(arr)]; }
 
 // ---------------------------------------------------------------------------
+// Recipes (contract section 6, optional)
+// ---------------------------------------------------------------------------
+
+/** Protein categories that count toward the weekly quotas when present in a recipe. */
+const QUOTA_CATEGORIES = new Set(['pesce', 'legumi', 'carne_rossa', 'salumi', 'carne_bianca', 'uova', 'formaggi', 'proteine_vegetali']);
+const RECIPE_SCALE = [0.75, 1.5];
+/** Weekly cap per recipe (for 7 days) and probability of trying a recipe for a main meal. */
+const RECIPE_WEEKLY_MAX = 2;
+const RECIPE_TRY = 0.85;
+
+/** Ingredient foods of a recipe, or null when an ingredient is missing from the KG. */
+function recipeParts(recipe, byId) {
+  if (!recipe || !Array.isArray(recipe.ingredients) || !recipe.ingredients.length) return null;
+  const parts = [];
+  for (const ing of recipe.ingredients) {
+    const food = byId.get(String(ing.food_id));
+    if (!food || !isNum(ing.grams) || ing.grams <= 0 || !food.per100g || !isNum(food.per100g.kcal)) return null;
+    // minor: herbs, spices, salt (role "aroma" or under 10 g) are ignored by the day rules
+    parts.push({ food, grams: ing.grams, scalable: ing.scalable !== false, role: ing.role || null,
+      minor: ing.role === 'aroma' || ing.grams < 10 });
+  }
+  return parts;
+}
+
+/**
+ * Hard constraints for a recipe: meal, season, diet, allergens and exclude_food_ids,
+ * checked on the recipe fields and again on every ingredient food.
+ */
+function recipeAllowed(recipe, parts, profile, meal) {
+  if (!parts) return false;
+  if (Array.isArray(recipe.meals) && !recipe.meals.includes(meal)) return false;
+  if (Array.isArray(recipe.seasons) && recipe.seasons.length && !recipe.seasons.includes(profile.season)) return false;
+  const allergens = new Set(profile.allergens || []);
+  const excluded = new Set(profile.exclude_food_ids || []);
+  if ((recipe.allergens || []).some((a) => allergens.has(a))) return false;
+  if (profile.diet === 'vegano' && !(recipe.diet && recipe.diet.vegan === true)) return false;
+  if (profile.diet === 'vegetariano' && !(recipe.diet && (recipe.diet.vegetarian === true || recipe.diet.vegan === true))) return false;
+  for (const { food } of parts) {
+    if (excluded.has(food.id) || !dietOk(food, profile.diet)) return false;
+    if ((food.allergens || []).some((a) => allergens.has(a))) return false;
+  }
+  return true;
+}
+
+/**
+ * Protein categories of a recipe that count as a portion: a protein ingredient
+ * (role secondo, or a quota category) with at least half a LARN portion, or 30 g.
+ */
+function recipeCategories(parts) {
+  const cats = new Set();
+  for (const { food, grams } of parts) {
+    // category from the LARN group when the KG has it, else from the food (secondo only)
+    let c = null;
+    if (food.larn_group) {
+      const g = normKey(food.larn_group);
+      for (const [cat, keys] of Object.entries(LARN_CATEGORY_KEYS)) if (keys.includes(g)) { c = cat; break; }
+      if (!c && g === 'proteine_vegetali') c = 'proteine_vegetali';
+      if (!c && g === 'pesce_conservato') c = 'pesce';
+    } else if (food.role === 'secondo') c = proteinCategory(food);
+    if (!c || !QUOTA_CATEGORIES.has(c)) continue;
+    const lp = LARN_PORTION.get(food);
+    const net = grams * edibleFraction(food);
+    if (net >= (lp ? lp * 0.5 : 30)) cats.add(c);
+  }
+  return cats;
+}
+
+/** Recipe grams: scalable ingredients scaled, then 5 g steps (1 g under 20 g). */
+function recipeGrams(g, scale, scalable) {
+  if (!scalable) return g;
+  const x = g * scale;
+  return x >= 20 ? Math.max(5, Math.round(x / 5) * 5) : Math.max(1, Math.round(x));
+}
+
+/** Scale (0.75..1.5, step 0.05) so that the recipe delivers `targetKcal`. */
+function recipeScale(parts, targetKcal) {
+  let fixed = 0; let scal = 0;
+  for (const p of parts) { const k = (kcal100(p.food) * p.grams) / 100; if (p.scalable) scal += k; else fixed += k; }
+  if (scal <= 0) return 1;
+  return Math.round(clamp((targetKcal - fixed) / scal, RECIPE_SCALE[0], RECIPE_SCALE[1]) * 20) / 20;
+}
+
+/** Working items (locked, tagged with rc) for a recipe at a given scale. */
+function recipeWItems(recipe, parts, scale, key, eff, category) {
+  const rc = { key, recipe, scale, covers: eff, category };
+  return parts.map((p) => ({
+    food: p.food, slot: 'recipe', grams: recipeGrams(p.grams, scale, p.scalable),
+    locked: true, rc, base: p.grams, scalable: p.scalable, minor: p.minor,
+  }));
+}
+
+/** Slots the recipe takes: its covers, plus secondo when it brings the meal's protein. */
+function effectiveCovers(recipe, parts, cats) {
+  const eff = new Set(recipe.covers || []);
+  if (cats.size) eff.add('secondo');
+  if (parts.some((p) => p.food.role === 'condimento' || isFat(p.food))) eff.add('condimento');
+  return eff;
+}
+
+/** Template share of the meal kcal for a set of covered roles. */
+function coveredShare(meal, eff) {
+  const t = TEMPLATES[meal] || [];
+  const sh = t.filter((x) => eff.has(x.roles[0])).reduce((a, x) => a + x.share, 0);
+  return sh > 0 ? sh : 0.4;
+}
+
+/** Potatoes (LARN group "patate" or the name). */
+function isPotato(f) { return f.larn_group === 'patate' || /patat|potato/i.test(`${f.name_it || ''} ${f.name_en || ''}`); }
+/** Plain raw grain (pasta, rice, spelt...): needs its own dressing when served alone. */
+function isPlainGrain(f) { return f.role === 'base_principale' && basisOf(f) === 'crudo' && !isBread(f) && !isPotato(f); }
+/** Grams of fats (oil, butter) in a list of working items. */
+const fatGrams = (items) => items.filter((it) => isFat(it.food)).reduce((a, it) => a + it.grams, 0);
+/** Max total oil in a meal with two recipes (g). */
+const MEAL_OIL_MAX = 20;
+
+/** Recipe display name by language. */
+function recipeName(r, lang) { return lang === 'en' ? (r.name_en || r.name_it) : (r.name_it || r.name_en); }
+
+/** Group working items into plan items: recipe components become one recipe item. */
+function toMealItems(items, lang) {
+  const out = []; const groups = new Map();
+  for (const it of items) {
+    if (!it.rc) { out.push(toItem(it, lang)); continue; }
+    let g = groups.get(it.rc.key);
+    if (!g) {
+      const r = it.rc.recipe;
+      g = {
+        type: 'recipe', recipe_id: r.id, name: recipeName(r, lang), display_name: recipeName(r, lang),
+        role: (r.covers && r.covers[0]) || 'base_principale', covers: (r.covers || []).slice(),
+        scale: it.rc.scale, slot: 'recipe', components: [],
+      };
+      if (it.rc.category) g.category = it.rc.category;
+      if (it.rc.swap_history) g.swap_history = it.rc.swap_history.slice();
+      groups.set(it.rc.key, g); out.push(g);
+    }
+    g.components.push(toItem({ food: it.food, slot: 'recipe', grams: it.grams }, lang));
+  }
+  return out;
+}
+
+/** Recompute a recipe item's totals from its components (mutates). */
+function recipeTotals(item) {
+  const t = totalsOf(item.components);
+  item.grams = item.components.reduce((a, c) => a + c.grams, 0);
+  item.kcal = t.kcal; item.protein_g = t.protein_g; item.carbs_g = t.carbs_g; item.fat_g = t.fat_g;
+  item.sugars_g = t.sugars_g; item.fiber_g = t.fiber_g; item.sfa_g = t.sfa_g;
+  Object.defineProperty(item, '_cov', { value: t._cov, enumerable: false, configurable: true });
+  return item;
+}
+
+/** Food-level items of a plan meal (recipe components flattened). */
+function flatItems(meal) {
+  return meal.items.flatMap((x) => (x.type === 'recipe' ? x.components : [x]));
+}
+
+// ---------------------------------------------------------------------------
 // Plan generation
 // ---------------------------------------------------------------------------
 
@@ -1252,7 +1422,9 @@ function dedupe(arr) { return [...new Set(arr)]; }
  * Generate a weekly plan.
  * @param {Profile} profile
  * @param {KG} kg parsed foods.json
- * @param {{seed?: number}} [opts] opts.seed overrides profile.seed
+ * @param {{seed?: number, recipes?: Object, useRecipes?: boolean}} [opts] opts.seed overrides
+ *   profile.seed; opts.recipes is the parsed recipes.json (optional), used for pranzo and
+ *   cena unless opts.useRecipes is false. Without recipes the plan is unchanged.
  * @returns {Object} Plan (see docs/CONTRACT.md)
  * @throws {Error} with `.errors` when the profile is invalid
  */
@@ -1288,6 +1460,28 @@ export function generatePlan(profile, kg, opts = {}) {
   /** @type {Map<string, Food>} */
   const prevBySlot = new Map();
   const outDays = [];
+  // Recipes: valid per meal, checked once.
+  const recipesOn = !!(opts.recipes && Array.isArray(opts.recipes.recipes) && opts.useRecipes !== false);
+  const byId = recipesOn ? new Map(kg.foods.map((f) => [f.id, f])) : null;
+  const recipePool = { pranzo: [], cena: [] };
+  if (recipesOn) {
+    for (const r of opts.recipes.recipes) {
+      const parts = recipeParts(r, byId);
+      for (const meal of ['pranzo', 'cena']) {
+        if (recipeAllowed(r, parts, profile, meal)) {
+          const cats = recipeCategories(parts);
+          if (cats.size > 1) continue;
+          if (!cats.size && (r.covers || []).includes('secondo')) continue;
+          recipePool[meal].push({ r, parts, cats, cat: cats.size ? [...cats][0] : null, eff: effectiveCovers(r, parts, cats) });
+        }
+      }
+    }
+  }
+  const recipeUses = new Map();
+  let prevDayRecipes = new Set();
+  const recipeCap = Math.max(1, Math.ceil((RECIPE_WEEKLY_MAX * days) / 7));
+  let recipeKey = 0;
+
   const condPools = {};
   for (const meal of ['pranzo', 'cena']) {
     let c = pool(['condimento'], meal).filter(isFat);
@@ -1298,6 +1492,7 @@ export function generatePlan(profile, kg, opts = {}) {
   for (let d = 0; d < days; d++) {
     const day = newDayState();
     const wMeals = [];
+    const todayRecipes = new Set();
     for (const meal of MEAL_TYPES) {
       const target = targets.kcal * MEAL_SHARES[meal];
       let slots = TEMPLATES[meal];
@@ -1307,8 +1502,57 @@ export function generatePlan(profile, kg, opts = {}) {
           : [{ slot: 'spuntino', roles: rng() < 0.5 ? ['frutta'] : ['snack'], share: 1 }];
       }
       const items = [];
+      let covered = null;
+      if (recipesOn && recipePool[meal] && recipePool[meal].length && rng() < RECIPE_TRY) {
+        const sched = schedule[2 * d + (meal === 'cena' ? 1 : 0)];
+        const cands = recipePool[meal].filter((x) => {
+          if ((recipeUses.get(x.r.id) || 0) >= recipeCap || prevDayRecipes.has(x.r.id) || todayRecipes.has(x.r.id)) return false;
+          if (x.cat && x.cat !== sched) return false;          // keeps the weekly protein quotas
+          return x.parts.every((p) => p.minor || p.food.role === 'condimento' || isFat(p.food) || isBread(p.food) ||
+            !dayKeys(p.food).some((k) => day.keys.has(k)));
+        });
+        if (cands.length) {
+          const pick = weightedPick(rng, cands.map((x) => ({
+            v: x, w: (priorityOf(x.r) + 1) ** 2 * (x.r.light === true ? 2 : 1) / (1 + (recipeUses.get(x.r.id) || 0)) ** 2,
+          })));
+          const scale = recipeScale(pick.parts, target * coveredShare(meal, pick.eff));
+          const comps = recipeWItems(pick.r, pick.parts, scale, `r${recipeKey++}`, pick.eff, pick.cat);
+          for (const c of comps) { items.push(c); if (!c.minor) { commitDay(c.food, day); use(c.food); } }
+          covered = pick.eff;
+          recipeUses.set(pick.r.id, (recipeUses.get(pick.r.id) || 0) + 1);
+          todayRecipes.add(pick.r.id);
+          // A secondo or contorno recipe leaves the base to fill: try a primo recipe first
+          // (primo + secondo), no protein, no overlapping slots except the dressing, oil in
+          // the meal at most MEAL_OIL_MAX g.
+          if (!covered.has('base_principale')) {
+            const oil = fatGrams(items);
+            const primi = cands.filter((x) => x !== pick && !x.cat && x.eff.has('base_principale') &&
+              ![...x.eff].some((r) => r !== 'condimento' && covered.has(r)) &&
+              x.parts.every((p) => p.minor || p.food.role === 'condimento' || isFat(p.food) || isBread(p.food) ||
+                !dayKeys(p.food).some((k) => day.keys.has(k))) &&
+              oil + x.parts.filter((p) => isFat(p.food)).reduce((a, p) => a + p.grams, 0) <= MEAL_OIL_MAX);
+            if (primi.length) {
+              const p2 = weightedPick(rng, primi.map((x) => ({
+                v: x, w: (priorityOf(x.r) + 1) ** 2 * (x.r.light === true ? 2 : 1) / (1 + (recipeUses.get(x.r.id) || 0)) ** 2,
+              })));
+              const sc2 = recipeScale(p2.parts, target * coveredShare(meal, new Set(['base_principale'])));
+              for (const c of recipeWItems(p2.r, p2.parts, sc2, `r${recipeKey++}`, p2.eff, null)) { items.push(c); if (!c.minor) { commitDay(c.food, day); use(c.food); } }
+              for (const r of p2.eff) covered.add(r);
+              recipeUses.set(p2.r.id, (recipeUses.get(p2.r.id) || 0) + 1);
+              todayRecipes.add(p2.r.id);
+            }
+          }
+        }
+      }
+      let needDressing = false;
       for (const s of slots) {
+        if (covered && covered.has(s.roles[0]) && !(s.slot === 'condimento' && needDressing)) continue;
         let cands = s.slot === 'condimento' ? condPools[meal] : pool(s.roles, meal);
+        // next to a recipe, prefer bread or potatoes to a plain grain as the base
+        if (covered && s.slot === 'base') {
+          const easy = cands.filter((f) => !isPlainGrain(f));
+          if (easy.length) cands = easy;
+        }
         if (meal === 'spuntino' && !cands.length) cands = pool(['frutta', 'snack'], meal);
         if (s.slot === 'condimento') {
           // Extra virgin olive oil most of the time, other fats otherwise.
@@ -1352,7 +1596,13 @@ export function generatePlan(profile, kg, opts = {}) {
         /** @type {WItem} */
         const it = { food, slot: s.slot, grams: role === 'contorno' ? roundFood(food, bounds(food).typ) : sizeFor(food, target * s.share) };
         if (food.role === 'secondo') it.category = proteinCategory(food);
+        if (covered && s.slot === 'condimento' && needDressing) {
+          // dressing for a plain grain next to a recipe: 5-10 g, kept fixed
+          it.grams = roundFood(food, clamp(MEAL_OIL_MAX - fatGrams(items), 5, 10));
+          it.locked = true;
+        }
         items.push(it);
+        if (covered && s.slot === 'base' && isPlainGrain(food)) needDressing = true;
       }
       wMeals.push({ type: meal, target, items });
     }
@@ -1365,7 +1615,7 @@ export function generatePlan(profile, kg, opts = {}) {
       const dense = r.warning ? [] : r.foods.filter(isProteinDense);
       if (!dense.length) continue;
       const m = wMeals.find((x) => x.type === meal);
-      if (m.items.length >= MAX_ITEMS[meal]) continue;
+      if (mealCount(m) >= MAX_ITEMS[meal]) continue;
       const food = pickFood(rng, dense, {
         meal, prevId: null, prevFood: null, day, weekUses, cap: null, strict: true,
         mealFoods: m.items.map((x) => x.food),
@@ -1404,14 +1654,14 @@ export function generatePlan(profile, kg, opts = {}) {
       const r = slotPool(kg, profile, [role], meal, cache);
       if (r.warning || !r.foods.length) continue;
       const m = wMeals.find((x) => x.type === meal);
-      if (m.items.length >= MAX_ITEMS[meal]) continue;
+      if (mealCount(m) >= MAX_ITEMS[meal]) continue;
       let extraPool = r.foods;
       if (role === 'base_principale') {
         // bread first; a meal that already has bread gets its bread raised by the kcal
         // shift and, if still short, a second starch of another LARN group (potatoes, rice)
         const hasBread = m.items.some((x) => isBread(x.food));
         const bread = extraPool.filter(isBread);
-        if (hasBread) extraPool = extraPool.filter((f) => !isBread(f));
+        if (hasBread) extraPool = extraPool.filter((f) => !isBread(f) && !isPlainGrain(f));
         else if (bread.length) extraPool = bread;
       } else if (role === 'snack') {
         // neither fatty (nuts) nor sweet (dried fruit, sweets): crackers, grissini, yogurt
@@ -1433,16 +1683,18 @@ export function generatePlan(profile, kg, opts = {}) {
       const fatLock = sumFat(items) > targets.fat_g * 1.1 ? new Set(items.filter((x) => isFatty(x.food))) : null;
       shiftByTiers(items, targets.kcal - sumKcal(items), fatLock);
     }
+    if (recipesOn) rescaleRecipes(wMeals, targets);
     {
       // Energy has priority over fat: last unlocked pass if still outside +-4%.
       const all = wMeals.flatMap((m) => m.items);
       const rest = targets.kcal - sumKcal(all);
       if (Math.abs(rest) > targets.kcal * 0.04) shiftByTiers(all, rest, null);
     }
+    prevDayRecipes = todayRecipes;
     const label = dayLabel(d, lang);
     outDays.push({
       index: d, label,
-      meals: wMeals.map((m) => ({ type: m.type, target_kcal: Math.round(m.target), items: m.items.map((it) => toItem(it, lang)) })),
+      meals: wMeals.map((m) => ({ type: m.type, target_kcal: Math.round(m.target), items: toMealItems(m.items, lang) })),
     });
   }
 
@@ -1461,6 +1713,24 @@ export function generatePlan(profile, kg, opts = {}) {
   warnings.push(...larnWarnings(plan));
   plan.warnings = dedupe(warnings);
   return plan;
+}
+
+/** Day still more than 3% off: move recipe scales (within 0.75..1.5) to close the gap. */
+function rescaleRecipes(wMeals, targets) {
+  const all = wMeals.flatMap((m) => m.items);
+  const delta = targets.kcal - sumKcal(all);
+  if (Math.abs(delta) <= targets.kcal * 0.03) return;
+  const groups = new Map();
+  for (const it of all) if (it.rc) { if (!groups.has(it.rc.key)) groups.set(it.rc.key, []); groups.get(it.rc.key).push(it); }
+  let scal = 0;
+  for (const comps of groups.values()) for (const c of comps) if (c.scalable) scal += (kcal100(c.food) * c.base) / 100;
+  if (scal <= 0) return;
+  const ds = delta / scal;
+  for (const comps of groups.values()) {
+    const rc = comps[0].rc;
+    rc.scale = Math.round(clamp(rc.scale + ds, RECIPE_SCALE[0], RECIPE_SCALE[1]) * 20) / 20;
+    for (const c of comps) c.grams = recipeGrams(c.base, rc.scale, c.scalable);
+  }
 }
 
 function dayLabel(d, lang) {
@@ -1486,9 +1756,11 @@ function dayLabel(d, lang) {
  * @param {number} mealIndex
  * @param {number} itemIndex
  * @param {Profile} profile
+ * @param {{recipes?: Object}} [opts] parsed recipes.json, needed to swap a recipe item for
+ *   another recipe; without it a recipe item is replaced by foods for its slots
  * @returns {Object} new plan
  */
-export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
+export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile, opts = {}) {
   const out = deepClone(plan);
   const day = out.days && out.days[dayIndex];
   const meal = day && day.meals[mealIndex];
@@ -1502,20 +1774,26 @@ export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
   const targets = out.targets || computeTargets(profile);
   indexLarn(kg); // standard portions for sizeFor
 
+  if (item.type === 'recipe') {
+    swapRecipe(out, kg, byId, day, meal, itemIndex, item, profile, opts, lang);
+    return finishSwap(out, day, targets);
+  }
+
   let { foods: pool } = slotPool(kg, profile, [item.role], meal.type, null);
   if (item.role === 'condimento' && (meal.type === 'pranzo' || meal.type === 'cena')) {
     const fats = pool.filter(isFat);
     pool = fats.length ? fats : hardFiltered(kg, profile, ['condimento']).filter(isFat);
   }
-  const inMeal = new Set(meal.items.map((x) => x.food_id));
+  const inMeal = new Set(flatItems(meal).map((x) => x.food_id));
   let history = (item.swap_history || []).concat(item.food_id);
   // Day rules: state of the day and of the meal without the item being replaced.
   const st = newDayState();
   day.meals.forEach((mm, mi) => mm.items.forEach((x, xi) => {
-    const f = byId.get(x.food_id);
-    if (f && !(mi === mealIndex && xi === itemIndex)) commitDay(f, st);
+    if (mi === mealIndex && xi === itemIndex) return;
+    for (const y of x.type === 'recipe' ? x.components : [x]) { const f = byId.get(y.food_id); if (f && !(x.type === 'recipe' && y.grams < 10)) commitDay(f, st); }
   }));
-  const mealFoods = meal.items.filter((_, xi) => xi !== itemIndex).map((x) => byId.get(x.food_id)).filter(Boolean);
+  const mealFoods = meal.items.filter((_, xi) => xi !== itemIndex)
+    .flatMap((x) => (x.type === 'recipe' ? x.components : [x])).map((x) => byId.get(x.food_id)).filter(Boolean);
   const strictPool = pool.filter((f) => fitsDay(f, st, mealFoods));
   if (strictPool.length > 1 || (strictPool.length === 1 && strictPool[0].id !== item.food_id)) pool = strictPool;
   else pool = pool.filter((f) => fitsDay(f, st, mealFoods, true));
@@ -1528,7 +1806,9 @@ export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
     const { min, max } = scaledRules(profile.diet, out.days.length, indexLarn(kg));
     const counts = {};
     out.days.forEach((dd, di) => dd.meals.forEach((mm, mi) => mm.items.forEach((x, xi) => {
-      if (x.role !== 'secondo' || (di === dayIndex && mi === mealIndex && xi === itemIndex)) return;
+      if (di === dayIndex && mi === mealIndex && xi === itemIndex) return;
+      if (x.type === 'recipe') { if (x.category) counts[x.category] = (counts[x.category] || 0) + 1; return; }
+      if (x.role !== 'secondo') return;
       const c = x.category || (byId.get(x.food_id) ? proteinCategory(byId.get(x.food_id)) : 'altro');
       counts[c] = (counts[c] || 0) + 1;
     })));
@@ -1577,6 +1857,11 @@ export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
     }
   }
 
+  return finishSwap(out, day, targets);
+}
+
+/** Totals, shopping list and warnings after a swap (mutates the clone). */
+function finishSwap(out, day, targets) {
   finalize(out);
   const label = day.label;
   out.warnings = dedupe([
@@ -1584,4 +1869,71 @@ export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
     ...dayWarnings(day, targets), ...larnWarnings(out),
   ]);
   return out;
+}
+
+/**
+ * Swap a recipe item for another valid recipe with the same covers and the same protein
+ * category (weekly quotas unchanged), scaled to the old kcal. If there is none, the recipe
+ * is replaced by foods for its slots. Mutates the clone.
+ */
+function swapRecipe(out, kg, byId, day, meal, itemIndex, item, profile, opts, lang) {
+  const recipes = opts && opts.recipes && Array.isArray(opts.recipes.recipes) ? opts.recipes.recipes : [];
+  const coversKey = (c) => [...(c || [])].sort().join('+');
+  let history = (item.swap_history || []).concat(item.recipe_id);
+  const st = newDayState();
+  const sameDay = new Set();
+  day.meals.forEach((mm) => mm.items.forEach((x) => {
+    if (x === item) return;
+    if (x.type === 'recipe') sameDay.add(x.recipe_id);
+    for (const y of x.type === 'recipe' ? x.components : [x]) { const f = byId.get(y.food_id); if (f && !(x.type === 'recipe' && y.grams < 10)) commitDay(f, st); }
+  }));
+  const oldCat = item.category || null;
+  const cands = recipes.map((r) => ({ r, parts: recipeParts(r, byId) }))
+    .filter((x) => x.r.id !== item.recipe_id && !sameDay.has(x.r.id) && coversKey(x.r.covers) === coversKey(item.covers) &&
+      recipeAllowed(x.r, x.parts, profile, meal.type))
+    .map((x) => ({ ...x, cats: recipeCategories(x.parts) }))
+    .filter((x) => x.cats.size <= 1 && (x.cats.size ? [...x.cats][0] : null) === oldCat)
+    .filter((x) => x.parts.every((p) => p.minor || p.food.role === 'condimento' || isFat(p.food) || isBread(p.food) ||
+      !dayKeys(p.food).some((k) => st.keys.has(k))));
+  let fresh = cands.filter((x) => !history.includes(x.r.id));
+  if (!fresh.length && cands.length) { fresh = cands; history = [item.recipe_id]; }
+  if (fresh.length) {
+    const w = (x) => (priorityOf(x.r) + 1) ** 2 * (x.r.light === true ? 2 : 1);
+    fresh.sort((a, b) => (w(b) - w(a)) || String(a.r.id).localeCompare(String(b.r.id)));
+    const x = fresh[0];
+    const scale = recipeScale(x.parts, item.kcal);
+    const comps = recipeWItems(x.r, x.parts, scale, 'swap', effectiveCovers(x.r, x.parts, x.cats), x.cat || null);
+    comps[0].rc.swap_history = history;
+    meal.items[itemIndex] = toMealItems(comps, lang)[0];
+    return;
+  }
+  // Fallback: foods for the recipe slots (template order), sized on the old recipe kcal.
+  const old = recipes.find((r) => r.id === item.recipe_id);
+  const oldParts = old ? recipeParts(old, byId) : null;
+  const eff = old && oldParts ? effectiveCovers(old, oldParts, recipeCategories(oldParts)) : new Set(item.covers || []);
+  if (oldCat) eff.add('secondo');
+  const slots = (TEMPLATES[meal.type] || []).filter((x) => eff.has(x.roles[0]));
+  const totalShare = slots.reduce((a, x) => a + x.share, 0) || 1;
+  const mealFoods = meal.items.filter((x) => x !== item)
+    .flatMap((x) => (x.type === 'recipe' ? x.components : [x])).map((x) => byId.get(x.food_id)).filter(Boolean);
+  const newItems = [];
+  for (const sl of slots) {
+    const role = sl.roles[0];
+    let pool = slotPool(kg, profile, [role], meal.type, null).foods;
+    if (role === 'condimento') { const fats = pool.filter(isFat); pool = fats.length ? fats : hardFiltered(kg, profile, ['condimento']).filter(isFat); }
+    if (role === 'secondo' && oldCat) { const same = pool.filter((f) => proteinCategory(f) === oldCat); if (same.length) pool = same; }
+    const ok = pool.filter((f) => fitsDay(f, st, mealFoods));
+    const list = (ok.length ? ok : pool).slice().sort((a, b) => (priorityOf(b) - priorityOf(a)) || a.id.localeCompare(b.id));
+    const food = list[0];
+    if (!food) continue;
+    commitDay(food, st); mealFoods.push(food);
+    const wi = { food, slot: sl.slot, grams: role === 'contorno' ? roundFood(food, bounds(food).typ) : sizeFor(food, (item.kcal * sl.share) / totalShare) };
+    if (role === 'secondo') wi.category = proteinCategory(food);
+    newItems.push(toItem(wi, lang));
+  }
+  if (!newItems.length) {
+    out.warnings = dedupe([...(out.warnings || []), `Nessuna alternativa disponibile per ${item.name} con i vincoli scelti.`]);
+    return;
+  }
+  meal.items.splice(itemIndex, 1, ...newItems);
 }

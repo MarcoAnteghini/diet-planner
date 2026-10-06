@@ -51,7 +51,7 @@ function shoppingItems(plan) {
   const agg = new Map();
   for (const day of plan.days || []) {
     for (const meal of day.meals || []) {
-      for (const it of meal.items || []) {
+      for (const it of (meal.items || []).flatMap((x) => (isRecipe(x) ? x.components : [x]))) {
         const key = it.food_id ?? itemName(it);
         const cur = agg.get(key) || { name: itemName(it), full: it.name, grams: 0, pieces: 0, unit_label: null, allPieces: true };
         cur.grams += num(it.grams) || 0;
@@ -162,35 +162,121 @@ function macroBar(totals, targets, t, lang) {
   );
 }
 
+// Recipe context, set by renderPlan: recipes.json lookup and the set of expanded rows.
+let recipeCtx = { byId: new Map(), expanded: new Set() };
+
+const isRecipe = (item) => item?.type === 'recipe' && Array.isArray(item.components);
+
+function swapButton(name, dayIndex, mealIndex, itemIndex, t, onSwap) {
+  return h(
+    'td',
+    { class: 'swap-cell no-print' },
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'btn btn-small',
+        'aria-label': t.swap_label(name),
+        dataset: { swap: `${dayIndex}:${mealIndex}:${itemIndex}` },
+        onclick: () => onSwap(dayIndex, mealIndex, itemIndex),
+      },
+      h('span', { 'aria-hidden': 'true', class: 'swap-icon' }, '\u21c4'),
+      h('span', { class: 'swap-text' }, ` ${t.swap}`),
+    ),
+  );
+}
+
+function foodRow(item, dayIndex, mealIndex, itemIndex, t, lang, onSwap) {
+  const name = itemName(item);
+  const full = item.name && item.name !== name ? item.name : null;
+  return h(
+    'tr',
+    {},
+    h('th', { scope: 'row', class: 'item-name', title: full }, name, full ? h('span', { class: 'full-name' }, full) : null),
+    h('td', { class: 'num' }, quantityCell(item, t, lang)),
+    h('td', { class: 'num' }, fmt(item.kcal, 0, lang)),
+    swapButton(name, dayIndex, mealIndex, itemIndex, t, onSwap),
+  );
+}
+
+function recipeMeta(rec, t) {
+  if (!rec) return null;
+  const parts = [];
+  if (num(rec.difficulty) !== null) parts.push(t.difficulty(rec.difficulty));
+  if (num(rec.time_min) !== null) parts.push(`${rec.time_min} min`);
+  return parts.length ? h('span', { class: 'recipe-meta' }, parts.join(' \u00b7 ')) : null;
+}
+
+function recipeRows(item, dayIndex, mealIndex, itemIndex, t, lang, onSwap) {
+  const key = `${dayIndex}:${mealIndex}:${itemIndex}`;
+  const rec = recipeCtx.byId.get(item.recipe_id) || null;
+  const name = item.display_name || (rec && (lang === 'en' ? rec.name_en : rec.name_it)) || item.name || item.recipe_id || '';
+  const open = recipeCtx.expanded.has(key);
+  const detailId = `recipe-${dayIndex}-${mealIndex}-${itemIndex}`;
+  const steps = rec ? (lang === 'en' ? rec.steps_en || rec.steps_it : rec.steps_it || rec.steps_en) || [] : [];
+
+  const detail = h(
+    'tr',
+    { class: 'recipe-detail', id: detailId, hidden: !open },
+    h(
+      'td',
+      { colspan: '4' },
+      h(
+        'table',
+        { class: 'components' },
+        h('caption', { class: 'visually-hidden' }, t.ingredients_of(name)),
+        h('tbody', {}, item.components.map((c) => {
+          const cname = itemName(c);
+          const full = c.name && c.name !== cname ? c.name : null;
+          return h(
+            'tr',
+            {},
+            h('th', { scope: 'row', class: 'item-name', title: full }, cname, h('span', { class: 'comp-macros' }, macroShort(c, t, lang))),
+            h('td', { class: 'num' }, quantityCell(c, t, lang)),
+            h('td', { class: 'num' }, `${fmt(c.kcal, 0, lang)} kcal`),
+          );
+        })),
+      ),
+      steps.length ? h('div', { class: 'recipe-steps' }, h('p', { class: 'steps-title' }, t.preparation), h('ol', {}, steps.map((st) => h('li', {}, String(st))))) : null,
+    ),
+  );
+
+  const toggle = h(
+    'button',
+    { type: 'button', class: 'recipe-toggle', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': detailId },
+    h('span', { class: 'chev', 'aria-hidden': 'true' }),
+    h('span', { class: 'recipe-name' }, name),
+    h('span', { class: 'visually-hidden' }, `, ${t.show_ingredients}`),
+  );
+  toggle.addEventListener('click', () => {
+    const now = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', now ? 'true' : 'false');
+    detail.hidden = !now;
+    if (now) recipeCtx.expanded.add(key);
+    else recipeCtx.expanded.delete(key);
+  });
+
+  const row = h(
+    'tr',
+    { class: 'recipe-row' },
+    h(
+      'th',
+      { scope: 'row', class: 'item-name' },
+      toggle,
+      h('span', { class: 'recipe-sub' }, h('span', { class: 'tag tag-recipe' }, t.recipe_tag), ' ', recipeMeta(rec, t)),
+    ),
+    h('td', { class: 'num' }, gramsText(num(item.grams), lang)),
+    h('td', { class: 'num' }, fmt(item.kcal, 0, lang)),
+    swapButton(name, dayIndex, mealIndex, itemIndex, t, onSwap),
+  );
+  return [row, detail];
+}
+
 function mealCard(meal, dayIndex, mealIndex, t, lang, onSwap) {
   const title = t.meal_names[meal.type] || meal.type;
-  const rows = (meal.items || []).map((item, itemIndex) => {
-    const name = itemName(item);
-    const full = item.name && item.name !== name ? item.name : null;
-    return h(
-      'tr',
-      {},
-      h('th', { scope: 'row', class: 'item-name', title: full }, name, full ? h('span', { class: 'full-name' }, full) : null),
-      h('td', { class: 'num' }, quantityCell(item, t, lang)),
-      h('td', { class: 'num' }, fmt(item.kcal, 0, lang)),
-      h(
-        'td',
-        { class: 'swap-cell no-print' },
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'btn btn-small',
-            'aria-label': t.swap_label(name),
-            dataset: { swap: `${dayIndex}:${mealIndex}:${itemIndex}` },
-            onclick: () => onSwap(dayIndex, mealIndex, itemIndex),
-          },
-          h('span', { 'aria-hidden': 'true', class: 'swap-icon' }, '⇄'),
-          h('span', { class: 'swap-text' }, ` ${t.swap}`),
-        ),
-      ),
-    );
-  });
+  const rows = (meal.items || []).flatMap((item, itemIndex) =>
+    isRecipe(item) ? recipeRows(item, dayIndex, mealIndex, itemIndex, t, lang, onSwap) : [foodRow(item, dayIndex, mealIndex, itemIndex, t, lang, onSwap)],
+  );
 
   return h(
     'section',
@@ -303,7 +389,10 @@ function shoppingList(plan, t, lang) {
 /**
  * Renders the whole plan section.
  */
-export function renderPlan({ plan, t, lang, activeDay, view, onSwap, onDayChange, onViewChange, onDownload }) {
+export function renderPlan({ plan, t, lang, activeDay, view, onSwap, onDayChange, onViewChange, onDownload, recipes, expanded }) {
+  const byId = new Map();
+  for (const r of Array.isArray(recipes?.recipes) ? recipes.recipes : []) if (r && r.id) byId.set(r.id, r);
+  recipeCtx = { byId, expanded: expanded instanceof Set ? expanded : new Set() };
   const viewTab = (id, label) =>
     h(
       'button',

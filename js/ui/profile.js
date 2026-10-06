@@ -29,6 +29,7 @@ export function defaultProfileValues(season) {
     allergens: [],
     days: 7,
     seed: randomSeed(),
+    useRecipes: true,
   };
 }
 
@@ -103,7 +104,7 @@ function radioGroup(legend, name, options, value, required) {
  * @param {function} p.onSubmit   () => void
  * @param {function} p.onNewVariant () => void
  */
-export function renderProfileForm({ values, t, kg, validate, onSubmit, onNewVariant }) {
+export function renderProfileForm({ values, t, kg, validate, onSubmit, onNewVariant, recipesAvailable = false }) {
   const allergens = Array.isArray(kg?.allergens) ? kg.allergens : [];
   const seasons = Array.isArray(kg?.seasons) && kg.seasons.length ? kg.seasons : DEFAULT_SEASONS;
 
@@ -155,6 +156,23 @@ export function renderProfileForm({ values, t, kg, validate, onSubmit, onNewVari
           ),
         )
       : null,
+    recipesAvailable
+      ? (() => {
+          const id = nextId('recipes');
+          const hintId = nextId('recipes-hint');
+          return h(
+            'div',
+            { class: 'field recipes-opt' },
+            h(
+              'div',
+              { class: 'check-row' },
+              h('input', { type: 'checkbox', id, name: 'use_recipes', checked: values.useRecipes !== false, 'aria-describedby': hintId }),
+              h('label', { for: id }, t.use_recipes),
+            ),
+            h('p', { class: 'hint', id: hintId }, t.use_recipes_hint),
+          );
+        })()
+      : null,
     h(
       'div',
       { class: 'seed-row' },
@@ -178,6 +196,7 @@ export function renderProfileForm({ values, t, kg, validate, onSubmit, onNewVari
     values.allergens = fd.getAll('allergens');
     values.days = fd.get('days') ?? '';
     values.seed = fd.get('seed') ?? '';
+    if (form.querySelector('[name=use_recipes]')) values.useRecipes = fd.get('use_recipes') === 'on';
   };
 
   let touched = false;

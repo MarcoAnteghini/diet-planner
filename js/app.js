@@ -13,6 +13,8 @@ import { createChatState, renderChat } from './ui/chat.js';
 const state = {
   lang: document.documentElement.lang === 'en' ? 'en' : 'it',
   kg: null,
+  recipes: null, // parsed recipes.json, optional
+  expandedRecipes: new Set(),
   dataNotice: null, // 'sample' | 'error' | null
   consent: hasConsent(LEGAL_VERSION),
   values: defaultProfileValues(seasonFromDate()),
@@ -71,6 +73,21 @@ async function loadData() {
   }
 }
 
+// Recipes are optional: any failure means "no recipes", silently.
+async function loadRecipes() {
+  try {
+    const data = await fetchJson(dataUrl('recipes', '../data/recipes.json'));
+    state.recipes = data && Array.isArray(data.recipes) && data.recipes.length ? data : null;
+  } catch {
+    state.recipes = null;
+  }
+}
+
+function planOpts() {
+  const useRecipes = !!state.recipes && state.values.useRecipes !== false;
+  return { recipes: useRecipes ? state.recipes : null, useRecipes };
+}
+
 async function loadLlm() {
   try {
     state.llm = await import('./llm.js');
@@ -95,8 +112,10 @@ function generate() {
   if (!state.kg) return;
   const profile = toProfile(state.values, state.lang);
   try {
-    state.plan = engine.generatePlan(profile, state.kg, {});
+    state.plan = engine.generatePlan(profile, state.kg, planOpts());
+    state.expandedRecipes = new Set();
     state.profile = profile;
+    state.planOpts = planOpts();
     state.activeDay = 0;
     state.view = 'menu';
     renderPlanSection();
@@ -114,9 +133,10 @@ function swap(d, m, i) {
   if (!state.plan) return;
   const before = state.plan.days?.[d]?.meals?.[m]?.items?.[i];
   try {
-    const next = engine.swapItem(state.plan, state.kg, d, m, i, state.profile);
+    const next = engine.swapItem(state.plan, state.kg, d, m, i, state.profile, state.planOpts || planOpts());
     const after = next?.days?.[d]?.meals?.[m]?.items?.[i];
-    if (!next || !after || (before && after.food_id === before.food_id)) {
+    const same = before && after && (before.type === 'recipe' ? after.recipe_id === before.recipe_id : after.food_id === before.food_id);
+    if (!next || !after || same) {
       announce(ui.live, t().swap_none);
       return;
     }
@@ -198,6 +218,7 @@ function renderProfileSection() {
       kg: state.kg,
       validate,
       onSubmit: generate,
+      recipesAvailable: !!state.recipes,
       onNewVariant: () => {
         if (state.plan && validate(state.values).ok) generate();
       },
@@ -233,6 +254,8 @@ function renderPlanSection() {
         if (btn) btn.focus();
       },
       onDownload: downloadJson,
+      recipes: state.recipes,
+      expanded: state.expandedRecipes,
     }),
   );
 }
@@ -281,5 +304,6 @@ ui.langBtn.addEventListener('click', () => {
   ui.notice.append(h('p', { class: 'muted', role: 'status' }, t().loading_data));
   renderChrome();
   await Promise.all([loadData(), loadLlm()]);
+  if (state.kg) await loadRecipes();
   renderAll();
 })();
