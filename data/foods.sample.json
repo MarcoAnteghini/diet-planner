@@ -1,6 +1,6 @@
 {
  "version": "1.0.0",
- "generated_at": "2026-10-06T08:47:21Z",
+ "generated_at": "2026-10-06T12:57:29Z",
  "sources": [
   "CIQUAL 2020 (ANSES)",
   "YouMeals DB"
@@ -13,7 +13,8 @@
   "base_principale",
   "secondo",
   "contorno",
-  "condimento"
+  "condimento",
+  "spalmabile"
  ],
  "meal_types": [
   "colazione",
@@ -380,6 +381,18 @@
     "freq_week_min": null,
     "freq_week_max": null
    },
+   "dolci_spalmabili": {
+    "portion_g": 20,
+    "basis": "pronto",
+    "label": "miele, marmellata (2 cucchiaini colmi)",
+    "freq_group": "zuccheri",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 2,
+    "freq_week_min": 1,
+    "freq_week_max": 2
+   },
    "dolciumi": {
     "portion_g": 30,
     "basis": "pronto",
@@ -396,7 +409,8 @@
   "notes": [
    "freq_group: groups with the same freq_group share one frequency (e.g. legumi secchi and legumi in scatola together 3 per week).",
    "portion_g is the net (edible) weight; foods carry edible_fraction for the gross weight.",
-   "Frequencies are for adults; salumi, bevande and dolciumi have no frequency in CREA 2018."
+   "Frequencies are for adults; salumi, bevande and dolciumi have no frequency in CREA 2018.",
+   "dolci_spalmabili (miele, marmellata): CREA 2018 Tabella 9.3 gives MAXIMUM frequencies (1, 2, 2 per week at 1500, 2000, 2500 kcal), not targets; 1 portion = 20 g."
   ]
  },
  "foods": [
@@ -798,7 +812,9 @@
    "larn_group": "sostituti_pane",
    "priority": 9,
    "pairs_with": [
-    "18107"
+    "18107",
+    "31006",
+    "31008"
    ],
    "substitutes": [
     "7352",
@@ -2936,6 +2952,343 @@
     "status": "auto",
     "confidence": 0.9,
     "notes": ""
+   }
+  },
+  {
+   "id": "31006",
+   "name_it": "Marmellata o marmellata (media)",
+   "name_en": "Jam or marmalade (average)",
+   "display_name_it": "Confettura di frutta",
+   "display_name_en": "Fruit jam",
+   "group": "sugar and confectionery",
+   "subgroup": "jam",
+   "family": "marmellata",
+   "role": "spalmabile",
+   "meals": {
+    "colazione": 10,
+    "spuntino": 5,
+    "pranzo": 0,
+    "cena": 0
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 20,
+    "min_g": 10,
+    "max_g": 30,
+    "household": "CUCCHIAINO"
+   },
+   "per100g": {
+    "kcal": 249.0,
+    "protein": 0.29,
+    "carbs": 60.2,
+    "sugars": 59.0,
+    "fat": 0.31,
+    "fiber": 0.91,
+    "salt": 0.019
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [],
+   "indices": {
+    "nova": 3,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "dolci_spalmabili",
+   "priority": 9,
+   "pairs_with": [
+    "7300"
+   ],
+   "substitutes": [
+    "31037",
+    "31068",
+    "31110"
+   ],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.9,
+    "notes": ""
+   }
+  },
+  {
+   "id": "31008",
+   "name_it": "Miele",
+   "name_en": "Honey",
+   "display_name_it": "Miele",
+   "display_name_en": "Honey",
+   "group": "sugar and confectionery",
+   "subgroup": "sugars and honey",
+   "family": "miele",
+   "role": "spalmabile",
+   "meals": {
+    "colazione": 10,
+    "spuntino": 5,
+    "pranzo": 0,
+    "cena": 0
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 20,
+    "min_g": 10,
+    "max_g": 30,
+    "household": "CUCCHIAINO"
+   },
+   "per100g": {
+    "kcal": 329.0,
+    "protein": 0.56,
+    "carbs": 81.7,
+    "sugars": 79.8,
+    "fat": 0.0,
+    "fiber": 0.0,
+    "salt": 0.01
+   },
+   "diet": {
+    "vegan": false,
+    "vegetarian": true
+   },
+   "allergens": [],
+   "indices": {
+    "nova": 1,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "dolci_spalmabili",
+   "priority": 8,
+   "pairs_with": [
+    "7300"
+   ],
+   "substitutes": [
+    "31006",
+    "31037",
+    "31068",
+    "31110"
+   ],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.8,
+    "notes": "kcal stimate dai macronutrienti (fattori UE 1169/2011)"
+   }
+  },
+  {
+   "id": "31110",
+   "name_it": "Marmellata, zucchero ridotto",
+   "name_en": "Jam, reduced sugar",
+   "display_name_it": "Confettura a ridotto contenuto di zuccheri",
+   "display_name_en": "Reduced sugar jam",
+   "group": "sugar and confectionery",
+   "subgroup": "jam",
+   "family": "zucca",
+   "role": "spalmabile",
+   "meals": {
+    "colazione": 10,
+    "spuntino": 5,
+    "pranzo": 0,
+    "cena": 0
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 20,
+    "min_g": 10,
+    "max_g": 30,
+    "household": "CUCCHIAINO"
+   },
+   "per100g": {
+    "kcal": 162.0,
+    "protein": 0.75,
+    "carbs": 38.0,
+    "sugars": 38.0,
+    "fat": 0.0,
+    "fiber": 1.8,
+    "salt": 0.023
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [],
+   "indices": {
+    "nova": 3,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "dolci_spalmabili",
+   "priority": 7,
+   "pairs_with": [
+    "7300"
+   ],
+   "substitutes": [
+    "31068",
+    "31037",
+    "31006"
+   ],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.8,
+    "notes": "macronutrienti mancanti impostati a 0: fat"
+   }
+  },
+  {
+   "id": "31037",
+   "name_it": "Marmellata, albicocca",
+   "name_en": "Jam, apricot",
+   "display_name_it": "Confettura di albicocche",
+   "display_name_en": "Apricot jam",
+   "group": "sugar and confectionery",
+   "subgroup": "jam",
+   "family": "marmellata",
+   "role": "spalmabile",
+   "meals": {
+    "colazione": 10,
+    "spuntino": 5,
+    "pranzo": 0,
+    "cena": 0
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 20,
+    "min_g": 10,
+    "max_g": 30,
+    "household": "CUCCHIAINO"
+   },
+   "per100g": {
+    "kcal": 247.0,
+    "protein": 0.0,
+    "carbs": 59.7,
+    "sugars": 56.8,
+    "fat": 0.3,
+    "fiber": 1.1,
+    "salt": 0.013
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [],
+   "indices": {
+    "nova": 3,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "dolci_spalmabili",
+   "priority": 6,
+   "pairs_with": [
+    "7300"
+   ],
+   "substitutes": [
+    "31006",
+    "31068",
+    "31110"
+   ],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.8,
+    "notes": "macronutrienti mancanti impostati a 0: protein"
+   }
+  },
+  {
+   "id": "31068",
+   "name_it": "Marmellata, mirtillo",
+   "name_en": "Jam, blueberry",
+   "display_name_it": "Confettura di frutti di bosco (mirtilli)",
+   "display_name_en": "Berry jam (blueberry)",
+   "group": "sugar and confectionery",
+   "subgroup": "jam",
+   "family": "mirtilli",
+   "role": "spalmabile",
+   "meals": {
+    "colazione": 10,
+    "spuntino": 5,
+    "pranzo": 0,
+    "cena": 0
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 20,
+    "min_g": 10,
+    "max_g": 30,
+    "household": "CUCCHIAINO"
+   },
+   "per100g": {
+    "kcal": 246.0,
+    "protein": 0.0,
+    "carbs": 58.9,
+    "sugars": 58.9,
+    "fat": 0.4,
+    "fiber": 2.1,
+    "salt": null
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [],
+   "indices": {
+    "nova": 3,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "dolci_spalmabili",
+   "priority": 5,
+   "pairs_with": [
+    "7300",
+    "19693"
+   ],
+   "substitutes": [
+    "31037",
+    "31006",
+    "31110"
+   ],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.8,
+    "notes": "macronutrienti mancanti impostati a 0: protein"
    }
   }
  ]

@@ -114,7 +114,15 @@ export const DIETS = ['onnivoro', 'vegetariano', 'vegano'];
 export const ALLERGENS = ['glutine', 'crostacei', 'uova', 'pesce', 'arachidi', 'soia', 'latte',
   'frutta_a_guscio', 'sedano', 'senape', 'sesamo', 'solfiti', 'lupini', 'molluschi'];
 export const MEAL_TYPES = ['colazione', 'spuntino', 'pranzo', 'cena'];
-const ROLE_ORDER = ['bevanda_colazione', 'base_colazione', 'frutta', 'snack', 'base_principale',
+/** Five meals (with an afternoon "merenda") from this daily target. */
+export const MERENDA_FROM_KCAL = 2200;
+export const MEAL_TYPES_5 = ['colazione', 'spuntino', 'pranzo', 'merenda', 'cena'];
+/** Meal labels for the UI. */
+export const MEAL_LABELS = {
+  it: { colazione: 'Colazione', spuntino: 'Spuntino', pranzo: 'Pranzo', merenda: 'Merenda', cena: 'Cena' },
+  en: { colazione: 'Breakfast', spuntino: 'Morning snack', pranzo: 'Lunch', merenda: 'Afternoon snack', cena: 'Dinner' },
+};
+const ROLE_ORDER = ['bevanda_colazione', 'base_colazione', 'spalmabile', 'frutta', 'snack', 'base_principale',
   'secondo', 'contorno', 'condimento'];
 
 const DAY_LABELS = {
@@ -128,6 +136,12 @@ const DAY_LABELS = {
  * cena 30-35%. We have one snack, so it takes both small snacks (10%).
  */
 export const MEAL_SHARES = { colazione: 0.20, spuntino: 0.10, pranzo: 0.40, cena: 0.30 };
+/** Five meals (target >= MERENDA_FROM_KCAL): spuntino 5-10% and merenda 5-10% (LARN practice). */
+export const MEAL_SHARES_5 = { colazione: 0.20, spuntino: 0.075, pranzo: 0.35, merenda: 0.075, cena: 0.30 };
+/** Meal list and shares for a daily kcal target. */
+function mealPlanFor(kcal) {
+  return kcal >= MERENDA_FROM_KCAL ? { types: MEAL_TYPES_5, shares: MEAL_SHARES_5 } : { types: MEAL_TYPES, shares: MEAL_SHARES };
+}
 
 /**
  * LARN 2014 (SINU, IV revisione) reference intakes used for targets and warnings.
@@ -171,19 +185,32 @@ const SPUNTINO_SPLIT_KCAL = 220;
  * existing bases were raised within bounds: a plain snack, then bread at lunch and dinner.
  * Never at breakfast (max 3 items), never fruit, spuntino max 2 items. Walked twice.
  */
-const EXTRA_SLOTS = [['spuntino', 'snack'], ['pranzo', 'base_principale'], ['cena', 'base_principale']];
+const EXTRA_SLOTS = [['spuntino', 'snack'], ['merenda', 'snack'], ['pranzo', 'base_principale'], ['cena', 'base_principale'],
+  ['pranzo', 'primo'], ['cena', 'primo']];
+/**
+ * Spreads (jam, honey): CREA, Linee guida per una sana alimentazione 2018, Tabella 9.3,
+ * suggests at most 1-2 portions a week of sweet spreads (kg.larn group "dolci_spalmabili").
+ * The owner wants a spread whenever the breakfast base is spread on, so the weekly cap is
+ * off; the LARN daily sugar check (< 15% En) still lowers the spread toward its minimum.
+ * Set to true to enforce the kg.larn weekly maximum (default 2 when the KG has none).
+ */
+export const ENFORCE_SPREAD_WEEKLY_CAP = false;
+
 /** Maximum items per meal: breakfast is drink + base + fruit (or yogurt), snack 1-2 items. */
-const MAX_ITEMS = { colazione: 3, spuntino: 2, pranzo: 6, cena: 6 };
+const MAX_ITEMS = { colazione: 3, spuntino: 2, merenda: 2, pranzo: 6, cena: 6 };
 /** Number of plan items in a working meal: a recipe and its components count as one. */
 function mealCount(m) {
   const keys = new Set();
   let n = 0;
-  for (const it of m.items) { if (it.rc) keys.add(it.rc.key); else n++; }
+  for (const it of m.items) {
+    if (it.rc) keys.add(it.rc.key);
+    else if (it.food.role !== 'spalmabile') n++;   // a spread is an accompaniment
+  }
   return n + keys.size;
 }
 
 /** Where a protein-dense extra item may be added when the day is short on protein. */
-const PROTEIN_EXTRA_SLOTS = [['spuntino', 'snack'], ['spuntino', 'bevanda_colazione']];
+const PROTEIN_EXTRA_SLOTS = [['spuntino', 'snack'], ['merenda', 'snack'], ['spuntino', 'bevanda_colazione']];
 
 /** Minimum meal suitability score (0..10) for a food to be used in a meal. */
 const MIN_MEAL_SCORE = 5;
@@ -276,8 +303,49 @@ function bounds(food) {
   const p = food.portion || {};
   const typ = isNum(p.typical_g) && p.typical_g > 0 ? p.typical_g : 100;
   const min = isNum(p.min_g) && p.min_g > 0 ? p.min_g : Math.max(5, Math.round(typ * 0.5));
-  const max = isNum(p.max_g) && p.max_g >= min ? p.max_g : Math.max(min, Math.round(typ * 1.5));
+  let max = isNum(p.max_g) && p.max_g >= min ? p.max_g : Math.max(min, Math.round(typ * 1.5));
+  if (PORTION_CTX && food.role === 'base_principale') max = Math.max(max, starchMax(food, max));
+  // breakfast bases (rusks, biscuits, cereals) up to 1.5 portions at high targets
+  if (PORTION_CTX && food.role === 'base_colazione' && PORTION_CTX.ramp > 0) max = Math.round(max * (1 + 0.5 * PORTION_CTX.ramp));
   return { min, max, typ: clamp(typ, min, max) };
+}
+
+/**
+ * Starch portions grow with energy needs. CREA, Linee guida per una sana alimentazione
+ * 2018, Tabella 9.1, raises the daily number of cereal and bread portions from 1500 to
+ * 2500 kcal (kg.larn freq_day_min / freq_day / freq_day_max at 1500 / 2000 / 2500 kcal,
+ * interpolated and extrapolated linearly here). A starch item may then be up to 2 LARN
+ * portions: raw pasta/rice/grains up to 160 g at >= 2800 kcal, bread up to 100 g,
+ * potatoes up to 400 g. Still one bread-or-potato besides the primo per meal.
+ */
+let PORTION_CTX = null;
+function setPortionContext(kg, kcal) {
+  const e = larnEntries(kg);
+  const daily = (key) => {
+    const g = e.get(key);
+    if (!g) return null;
+    const lo = g.freq_day_min; const mid = g.freq_day; const hi = g.freq_day_max;
+    if (![lo, mid, hi].every(isNum)) return null;
+    if (kcal <= 2000) return lo + ((mid - lo) * (kcal - 1500)) / 500;
+    return mid + ((hi - mid) * (kcal - 2000)) / 500;
+  };
+  const ramp = clamp((kcal - 2200) / 600, 0, 1);           // 0 at 2200, 1 at 2800 kcal
+  const breadDay = daily('pane');
+  // bread per main meal from the CREA daily portions (2 main meals), at most 2 portions
+  const breadPortions = breadDay ? clamp(breadDay / 2, 1, 2) : 1 + ramp;
+  PORTION_CTX = { kcal, ramp, breadPortions };
+}
+function starchMax(food, max) {
+  const c = PORTION_CTX;
+  if (!c || c.ramp <= 0) return max;
+  if (isBread(food)) {
+    const lp = LARN_PORTION.get(food) || 50;
+    const step = unitOf(food) ? unitOf(food).grams / 2 : 5;
+    return Math.min(100, Math.max(max, Math.ceil((lp * Math.min(c.breadPortions, 1 + c.ramp)) / step) * step));
+  }
+  if (isPotato(food)) return Math.round(max + c.ramp * Math.max(0, 400 - max));
+  if (basisOf(food) === 'crudo') return Math.round(max + c.ramp * Math.max(0, 160 - max));
+  return max;
 }
 
 /** Round to a multiple of 5 g, staying inside [min, max]. */
@@ -548,7 +616,11 @@ function dietOk(food, diet) {
 function inSeason(food, season) {
   return !Array.isArray(food.seasons) || food.seasons.length === 0 || food.seasons.includes(season);
 }
-const mealScore = (food, meal) => (food.meals && isNum(food.meals[meal]) ? food.meals[meal] : 0);
+// the KG scores 4 meals; the afternoon merenda uses the snack score
+const mealScore = (food, meal) => {
+  const m = meal === 'merenda' ? 'spuntino' : meal;
+  return food.meals && isNum(food.meals[m]) ? food.meals[m] : 0;
+};
 
 /**
  * Foods allowed by the hard constraints (role, diet, allergens, exclusions, valid kcal).
@@ -608,6 +680,8 @@ function fitsDay(f, st, mealFoods, mealOnly = false) {
   // never two foods of the same LARN group (or two breads) in one meal
   if (f.larn_group && mealFoods.some((x) => x.larn_group === f.larn_group)) return false;
   if (isBread(f) && mealFoods.some(isBread)) return false;
+  // at most one of bread or potatoes per meal (next to a primo or alone), never both
+  if ((isBread(f) || isPotato(f)) && f.role !== 'base_colazione' && mealFoods.some((x) => x.role !== 'base_colazione' && (isBread(x) || isPotato(x)))) return false;
   if (f.role === 'frutta' && mealFoods.some((x) => x.role === 'frutta')) return false;
   if (f.role === 'bevanda_colazione' && mealFoods.some((x) => x.role === 'bevanda_colazione')) return false;
   if (isDairyLike(f) && mealFoods.some(isDairyLike)) return false;
@@ -874,7 +948,7 @@ function pickFood(rng, pool, ctx) {
   const maxP = pool.reduce((m, f) => Math.max(m, priorityOf(f)), 0);
   // drinks and fats: only the best priority (partially skimmed milk, extra virgin olive
   // oil) unless excluded; variety-driven roles use a window of 2 points
-  const exact = pool.length && ['bevanda_colazione', 'condimento'].includes(pool[0].role);
+  const exact = pool.length && ['bevanda_colazione', 'condimento', 'spalmabile'].includes(pool[0].role);
   const top = pool.filter((f) => (exact ? priorityOf(f) === maxP : priorityOf(f) >= maxP - 2));
   const t1 = (f) => familyOf(f) !== prevId && okDay(f) && (cap == null || uses(f) < cap);
   const t2 = (f) => familyOf(f) !== prevId && okDay(f);
@@ -1365,6 +1439,26 @@ function coveredShare(meal, eff) {
   return sh > 0 ? sh : 0.4;
 }
 
+/** A breakfast base you spread jam or honey on (rusks, bread, rice cakes, toast). */
+function isSpreadBase(f) {
+  const n = `${f.name_it || ''} | ${f.display_name_it || ''} | ${f.name_en || ''}`;
+  if (/cereal|muesli|fiocchi|flakes|frollin|cornett|croissant|brioche|torta|cake\b(?! di riso)|wafer/i.test(n) && !/rice cake/i.test(n)) return false;
+  if (/^biscott/i.test(f.name_it || '') || /^biscott/i.test(f.display_name_it || '')) return false;
+  return /fett[ae] biscottat|\brusks?\b|\bpane\b|\bbread\b|gallett|rice cakes?|toast|friselle|crackers?/i.test(n);
+}
+
+/**
+ * Breakfast drinks and pots keep a standard portion: 200 g preferred, within 125-250 g
+ * (125 ml is the LARN standard portion of milk) and the food's bounds; whole pots for
+ * unit foods. They are not resized by the kcal balancing.
+ */
+function drinkGrams(f) {
+  const b = bounds(f);
+  if (unitOf(f)) return roundFood(f, unitOf(f).grams);
+  const lo = Math.max(125, b.min); const hi = Math.min(250, b.max);
+  return roundFood(f, lo <= hi ? clamp(200, lo, hi) : b.typ);
+}
+
 /** Potatoes (LARN group "patate" or the name). */
 function isPotato(f) { return f.larn_group === 'patate' || /patat|potato/i.test(`${f.name_it || ''} ${f.name_en || ''}`); }
 /** Plain raw grain (pasta, rice, spelt...): needs its own dressing when served alone. */
@@ -1429,6 +1523,10 @@ function flatItems(meal) {
  * @throws {Error} with `.errors` when the profile is invalid
  */
 export function generatePlan(profile, kg, opts = {}) {
+  try { return generatePlanInner(profile, kg, opts); } finally { PORTION_CTX = null; }
+}
+
+function generatePlanInner(profile, kg, opts) {
   const v = validateProfile(profile);
   if (!v.ok) {
     const e = new Error(v.errors.join(' '));
@@ -1471,12 +1569,15 @@ export function generatePlan(profile, kg, opts = {}) {
         if (recipeAllowed(r, parts, profile, meal)) {
           const cats = recipeCategories(parts);
           if (cats.size > 1) continue;
+          // starch rule: never bread and potatoes in the same dish
+          if (parts.some((x) => isBread(x.food)) && parts.some((x) => isPotato(x.food))) continue;
           if (!cats.size && (r.covers || []).includes('secondo')) continue;
           recipePool[meal].push({ r, parts, cats, cat: cats.size ? [...cats][0] : null, eff: effectiveCovers(r, parts, cats) });
         }
       }
     }
   }
+  let spreadUses = 0;
   const recipeUses = new Map();
   let prevDayRecipes = new Set();
   const recipeCap = Math.max(1, Math.ceil((RECIPE_WEEKLY_MAX * days) / 7));
@@ -1489,14 +1590,16 @@ export function generatePlan(profile, kg, opts = {}) {
     condPools[meal] = c;
   }
 
+  const mealList = mealPlanFor(targets.kcal);
+  setPortionContext(kg, targets.kcal);
   for (let d = 0; d < days; d++) {
     const day = newDayState();
     const wMeals = [];
     const todayRecipes = new Set();
-    for (const meal of MEAL_TYPES) {
-      const target = targets.kcal * MEAL_SHARES[meal];
+    for (const meal of mealList.types) {
+      const target = targets.kcal * mealList.shares[meal];
       let slots = TEMPLATES[meal];
-      if (meal === 'spuntino') {
+      if (meal === 'spuntino' || meal === 'merenda') {
         slots = target >= SPUNTINO_SPLIT_KCAL
           ? [{ slot: 'frutta', roles: ['frutta'], share: 0.45 }, { slot: 'spuntino', roles: ['snack'], share: 0.55 }]
           : [{ slot: 'spuntino', roles: rng() < 0.5 ? ['frutta'] : ['snack'], share: 1 }];
@@ -1518,7 +1621,7 @@ export function generatePlan(profile, kg, opts = {}) {
           const scale = recipeScale(pick.parts, target * coveredShare(meal, pick.eff));
           const comps = recipeWItems(pick.r, pick.parts, scale, `r${recipeKey++}`, pick.eff, pick.cat);
           for (const c of comps) { items.push(c); if (!c.minor) { commitDay(c.food, day); use(c.food); } }
-          covered = pick.eff;
+          covered = new Set(pick.eff);   // copy: the pool entry is shared across days
           recipeUses.set(pick.r.id, (recipeUses.get(pick.r.id) || 0) + 1);
           todayRecipes.add(pick.r.id);
           // A secondo or contorno recipe leaves the base to fill: try a primo recipe first
@@ -1530,7 +1633,8 @@ export function generatePlan(profile, kg, opts = {}) {
               ![...x.eff].some((r) => r !== 'condimento' && covered.has(r)) &&
               x.parts.every((p) => p.minor || p.food.role === 'condimento' || isFat(p.food) || isBread(p.food) ||
                 !dayKeys(p.food).some((k) => day.keys.has(k))) &&
-              oil + x.parts.filter((p) => isFat(p.food)).reduce((a, p) => a + p.grams, 0) <= MEAL_OIL_MAX);
+              oil + x.parts.filter((p) => isFat(p.food)).reduce((a, p) => a + p.grams, 0) <= MEAL_OIL_MAX &&
+              !(x.parts.some((p) => isBread(p.food) || isPotato(p.food)) && items.some((c) => isBread(c.food) || isPotato(c.food))));
             if (primi.length) {
               const p2 = weightedPick(rng, primi.map((x) => ({
                 v: x, w: (priorityOf(x.r) + 1) ** 2 * (x.r.light === true ? 2 : 1) / (1 + (recipeUses.get(x.r.id) || 0)) ** 2,
@@ -1553,7 +1657,7 @@ export function generatePlan(profile, kg, opts = {}) {
           const easy = cands.filter((f) => !isPlainGrain(f));
           if (easy.length) cands = easy;
         }
-        if (meal === 'spuntino' && !cands.length) cands = pool(['frutta', 'snack'], meal);
+        if ((meal === 'spuntino' || meal === 'merenda') && !cands.length) cands = pool(['frutta', 'snack'], meal);
         if (s.slot === 'condimento') {
           // Extra virgin olive oil most of the time, other fats otherwise.
           // With priorities in the KG the top-priority fat wins (pickFood); without them,
@@ -1595,6 +1699,7 @@ export function generatePlan(profile, kg, opts = {}) {
         use(food);
         /** @type {WItem} */
         const it = { food, slot: s.slot, grams: role === 'contorno' ? roundFood(food, bounds(food).typ) : sizeFor(food, target * s.share) };
+        if (role === 'bevanda_colazione') { it.grams = drinkGrams(food); it.locked = true; }
         if (food.role === 'secondo') it.category = proteinCategory(food);
         if (covered && s.slot === 'condimento' && needDressing) {
           // dressing for a plain grain next to a recipe: 5-10 g, kept fixed
@@ -1603,6 +1708,30 @@ export function generatePlan(profile, kg, opts = {}) {
         }
         items.push(it);
         if (covered && s.slot === 'base' && isPlainGrain(food)) needDressing = true;
+      }
+      // Spread (jam, honey) on rusks, bread, rice cakes: an accompaniment at its typical
+      // portion, outside the 3-item limit; never moved by the kcal balancing (only the
+      // sugar check may lower it toward its minimum).
+      if (meal === 'colazione') {
+        const base = items.find((x) => x.food.role === 'base_colazione');
+        let spreadCap = Infinity;
+        if (ENFORCE_SPREAD_WEEKLY_CAP) {
+          const e = larnEntries(kg).get('dolci_spalmabili');
+          const w = e && larnWeeklyOfEntry(e);
+          spreadCap = Math.max(1, Math.ceil((((w && isNum(w.max)) ? w.max : 2) * days) / 7));
+        }
+        if (base && isSpreadBase(base.food) && spreadUses < spreadCap) {
+          const r = slotPool(kg, profile, ['spalmabile'], meal, cache);
+          const food = r.foods.length ? pickFood(rng, r.foods, {
+            meal, prevId: null, prevFood: null, day, weekUses, cap: null, strict: true,
+            mealFoods: items.map((x) => x.food),
+          }) : null;
+          if (food) {
+            commitDay(food, day); use(food);
+            items.push({ food, slot: 'spalmabile', grams: roundFood(food, bounds(food).typ) });
+            spreadUses++;
+          }
+        }
       }
       wMeals.push({ type: meal, target, items });
     }
@@ -1615,7 +1744,7 @@ export function generatePlan(profile, kg, opts = {}) {
       const dense = r.warning ? [] : r.foods.filter(isProteinDense);
       if (!dense.length) continue;
       const m = wMeals.find((x) => x.type === meal);
-      if (mealCount(m) >= MAX_ITEMS[meal]) continue;
+      if (!m || mealCount(m) >= MAX_ITEMS[meal]) continue;
       const food = pickFood(rng, dense, {
         meal, prevId: null, prevFood: null, day, weekUses, cap: null, strict: true,
         mealFoods: m.items.map((x) => x.food),
@@ -1624,6 +1753,7 @@ export function generatePlan(profile, kg, opts = {}) {
       const snapshot = wMeals.map((x) => x.items.map((it) => it.grams));
       const b = bounds(food);
       const extra = { food, slot: 'extra', grams: roundFood(food, b.typ) };
+      if (food.role === 'bevanda_colazione') { extra.grams = drinkGrams(food); extra.locked = true; }
       m.items.push(extra);
       fixProtein(all.concat(extra), targets.protein_g);
       const items = wMeals.flatMap((x) => x.items);
@@ -1651,10 +1781,48 @@ export function generatePlan(profile, kg, opts = {}) {
       const all = wMeals.flatMap((m) => m.items);
       const delta = targets.kcal - sumKcal(all);
       if (delta <= targets.kcal * 0.03) break;
+      if (role === 'primo') {
+        // CREA: more energy means more cereal portions. A main meal without a primo gets
+        // one (a primo recipe, else plain grain with its own dressing), next to at most
+        // one bread or potato.
+        const m = wMeals.find((x) => x.type === meal);
+        if (!m || mealCount(m) >= MAX_ITEMS[meal]) continue;
+        const hasPrimo = m.items.some((x) => (x.rc && x.rc.covers.has('base_principale')) || (!x.rc && isPlainGrain(x.food)));
+        if (hasPrimo) continue;
+        const hasBP = m.items.some((x) => isBread(x.food) || isPotato(x.food));
+        const oil = fatGrams(m.items);
+        const primi = recipesOn ? (recipePool[meal] || []).filter((x) => !x.cat && x.eff.has('base_principale') && !x.eff.has('secondo') &&
+          (recipeUses.get(x.r.id) || 0) < recipeCap && !prevDayRecipes.has(x.r.id) && !todayRecipes.has(x.r.id) &&
+          !(hasBP && x.parts.some((pp) => isBread(pp.food) || isPotato(pp.food))) &&
+          oil + x.parts.filter((pp) => isFat(pp.food)).reduce((a, pp) => a + pp.grams, 0) <= MEAL_OIL_MAX &&
+          x.parts.every((pp) => pp.minor || pp.food.role === 'condimento' || isFat(pp.food) || isBread(pp.food) ||
+            !dayKeys(pp.food).some((k) => day.keys.has(k)))) : [];
+        if (primi.length) {
+          const pr = weightedPick(rng, primi.map((x) => ({ v: x, w: (priorityOf(x.r) + 1) ** 2 * (x.r.light === true ? 2 : 1) })));
+          const sc = recipeScale(pr.parts, delta);
+          for (const c of recipeWItems(pr.r, pr.parts, sc, `r${recipeKey++}`, pr.eff, null)) { m.items.push(c); if (!c.minor) { commitDay(c.food, day); use(c.food); } }
+          recipeUses.set(pr.r.id, (recipeUses.get(pr.r.id) || 0) + 1);
+          todayRecipes.add(pr.r.id);
+        } else {
+          const gp = slotPool(kg, profile, ['base_principale'], meal, cache);
+          const grains = gp.warning ? [] : gp.foods.filter(isPlainGrain);
+          const food = grains.length ? pickFood(rng, grains, { meal, prevId: null, prevFood: null, day, weekUses, strict: true, cap: null, mealFoods: m.items.map((x) => x.food) }) : null;
+          if (!food) continue;
+          commitDay(food, day); use(food);
+          m.items.push({ food, slot: 'extra', grams: sizeFor(food, delta) });
+          if (!m.items.some((x) => !x.rc && x.food.role === 'condimento') && condPools[meal] && condPools[meal].length) {
+            const oilF = condPools[meal].slice().sort((a, b) => priorityOf(b) - priorityOf(a))[0];
+            m.items.push({ food: oilF, slot: 'condimento', grams: roundFood(oilF, clamp(MEAL_OIL_MAX - fatGrams(m.items), 5, 10)), locked: true });
+          }
+        }
+        const items = wMeals.flatMap((x) => x.items);
+        shiftByTiers(items, targets.kcal - sumKcal(items), null);
+        continue;
+      }
       const r = slotPool(kg, profile, [role], meal, cache);
       if (r.warning || !r.foods.length) continue;
       const m = wMeals.find((x) => x.type === meal);
-      if (mealCount(m) >= MAX_ITEMS[meal]) continue;
+      if (!m || mealCount(m) >= MAX_ITEMS[meal]) continue;
       let extraPool = r.foods;
       if (role === 'base_principale') {
         // bread first; a meal that already has bread gets its bread raised by the kcal
@@ -1694,7 +1862,7 @@ export function generatePlan(profile, kg, opts = {}) {
     const label = dayLabel(d, lang);
     outDays.push({
       index: d, label,
-      meals: wMeals.map((m) => ({ type: m.type, target_kcal: Math.round(m.target), items: toMealItems(m.items, lang) })),
+      meals: wMeals.map((m) => ({ type: m.type, label: (MEAL_LABELS[lang] || MEAL_LABELS.it)[m.type], target_kcal: Math.round(m.target), items: toMealItems(m.items, lang) })),
     });
   }
 
@@ -1761,6 +1929,14 @@ function dayLabel(d, lang) {
  * @returns {Object} new plan
  */
 export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile, opts = {}) {
+  const prevCtx = PORTION_CTX;
+  try {
+    if (!prevCtx && kg && plan && plan.targets) { indexLarn(kg); setPortionContext(kg, plan.targets.kcal); }
+    return swapItemInner(plan, kg, dayIndex, mealIndex, itemIndex, profile, opts);
+  } finally { PORTION_CTX = prevCtx; }
+}
+
+function swapItemInner(plan, kg, dayIndex, mealIndex, itemIndex, profile, opts) {
   const out = deepClone(plan);
   const day = out.days && out.days[dayIndex];
   const meal = day && day.meals[mealIndex];
@@ -1936,4 +2112,270 @@ function swapRecipe(out, kg, byId, day, meal, itemIndex, item, profile, opts, la
     return;
   }
   meal.items.splice(itemIndex, 1, ...newItems);
+}
+
+// ---------------------------------------------------------------------------
+// Family plan (contract section 7): same menu for everyone, doses per person
+// ---------------------------------------------------------------------------
+
+const DIET_RANK = { onnivoro: 0, vegetariano: 1, vegano: 2 };
+/** Per-member item fields (everything else is shared by the family). */
+const MEMBER_FIELDS = ['grams', 'edible_g', 'pieces', 'kcal', 'protein_g', 'carbs_g', 'fat_g',
+  'sugars_g', 'fiber_g', 'sfa_g', 'scale', 'components'];
+
+const memberLabel = (m, i) => (m && typeof m.label === 'string' && m.label.trim() ? m.label.trim() : `Persona ${i + 1}`);
+
+/**
+ * Validate the members and merge their constraints: allergens and exclusions = union,
+ * diet = strictest; season, days, seed and lang from opts or the first member.
+ * @returns {{shared: Profile, errors: string[], warnings: string[]}}
+ */
+function mergeMembers(members, opts = {}) {
+  const errors = []; const warnings = [];
+  if (!Array.isArray(members) || members.length < 2 || members.length > 8) {
+    return { shared: null, errors: ['Il piano famiglia richiede da 2 a 8 persone.'], warnings };
+  }
+  members.forEach((m, i) => {
+    const label = memberLabel(m, i);
+    if (m && isNum(m.age) && m.age < 18) {
+      errors.push(`${label}: la modalità famiglia per bambini e ragazzi sotto i 18 anni non è ancora disponibile.`);
+      return;
+    }
+    const v = validateProfile({ ...members[0], ...m, season: opts.season ?? members[0].season, days: opts.days ?? members[0].days, seed: undefined });
+    for (const e of v.errors) errors.push(`${label}: ${e}`);
+    for (const w of v.warnings) warnings.push(`${label}: ${w}`);
+  });
+  if (errors.length) return { shared: null, errors, warnings };
+  const first = members[0];
+  const diet = members.map((m) => m.diet).reduce((a, b) => (DIET_RANK[b] > DIET_RANK[a] ? b : a), 'onnivoro');
+  const shared = {
+    ...first,
+    diet,
+    allergens: [...new Set(members.flatMap((m) => m.allergens || []))].sort(),
+    exclude_food_ids: [...new Set(members.flatMap((m) => m.exclude_food_ids || []))].sort(),
+    season: opts.season ?? first.season,
+    days: opts.days ?? first.days ?? 7,
+    seed: isNum(opts.seed) ? opts.seed : (isNum(first.seed) ? first.seed : 42),
+    lang: opts.lang ?? first.lang ?? 'it',
+  };
+  delete shared.label;
+  return { shared, errors, warnings };
+}
+
+/** Profile of one member with the family's shared constraints. */
+function memberProfile(m, shared) {
+  const p = { ...m, diet: shared.diet, allergens: shared.allergens, exclude_food_ids: shared.exclude_food_ids,
+    season: shared.season, days: shared.days, seed: shared.seed, lang: shared.lang };
+  delete p.label;
+  return p;
+}
+
+/**
+ * Doses of a fixed menu for one person: every item scaled by the kcal ratio within its
+ * portion bounds (recipes through their scalable ingredients, unit foods in pieces), then
+ * the usual day balancing toward that person's targets. Foods never change.
+ */
+function doseMenu(menu, kg, targets, recipesById, lang) {
+  try { setPortionContext(kg, targets.kcal); return doseMenuInner(menu, kg, targets, recipesById, lang); } finally { PORTION_CTX = null; }
+}
+
+function doseMenuInner(menu, kg, targets, recipesById, lang) {
+  const byId = new Map(kg.foods.map((f) => [f.id, f]));
+  const ratio = targets.kcal / (menu.targets.kcal || targets.kcal);
+  const out = deepClone(menu);
+  out.targets = targets;
+  let key = 0;
+  out.days = menu.days.map((day) => {
+    const wMeals = day.meals.map((m) => {
+      const items = [];
+      for (const it of m.items) {
+        if (it.type === 'recipe') {
+          const r = recipesById && recipesById.get(it.recipe_id);
+          const parts = r ? recipeParts(r, byId) : null;
+          const scale = Math.round(clamp((it.scale || 1) * ratio, RECIPE_SCALE[0], RECIPE_SCALE[1]) * 20) / 20;
+          let comps;
+          if (parts) {
+            comps = recipeWItems(r, parts, scale, `f${key++}`, new Set(it.covers || []), it.category || null);
+          } else {
+            // recipes.json not given: scale the components of the menu proportionally
+            const pseudo = { id: it.recipe_id, name_it: it.display_name, name_en: it.display_name, covers: it.covers || [] };
+            const rc = { key: `f${key++}`, recipe: pseudo, scale, covers: new Set(it.covers || []), category: it.category || null };
+            comps = it.components.map((c) => ({
+              food: byId.get(c.food_id), slot: 'recipe', grams: recipeGrams(c.grams / (it.scale || 1), scale, true),
+              locked: true, rc, base: c.grams / (it.scale || 1), scalable: true, minor: c.grams < 10,
+            })).filter((c) => c.food);
+          }
+          if (it.swap_history) comps[0].rc.swap_history = it.swap_history;
+          items.push(...comps);
+          continue;
+        }
+        const f = byId.get(it.food_id);
+        if (!f) continue;
+        const fixed = f.role === 'contorno' || f.role === 'bevanda_colazione';
+        const grams = fixed ? it.grams : roundFood(f, it.grams * ratio);
+        const w = { food: f, slot: it.slot, grams };
+        if (f.role === 'bevanda_colazione') w.locked = true;
+        if (it.slot === 'extra' || (m.type === 'merenda' && targets.kcal < MERENDA_FROM_KCAL)) w.optional = true;
+        if (it.category) w.category = it.category;
+        if (it.swap_history) w.swap_history = it.swap_history;
+        items.push(w);
+      }
+      return { type: m.type, target: m.target_kcal * ratio, items };
+    });
+    correctDay(wMeals, targets);
+    const all = wMeals.flatMap((m) => m.items);
+    // Optional extras of the menu (built for the largest eater) drop to 0 g, largest
+    // first, while this member stays above target with everything else at its minimum.
+    for (let k = 0; k < 6; k++) {
+      const over = sumKcal(all) - targets.kcal;
+      if (over <= targets.kcal * 0.03) break;
+      const opt = all.filter((x) => x.optional && !x.zero).sort((a, b) => itemKcal(b) - itemKcal(a));
+      if (!opt.length) break;
+      const x = opt.find((o) => itemKcal(o) <= over + targets.kcal * 0.03) || opt[opt.length - 1];
+      x.zero = true; x.locked = true; x.grams = 0;
+      shiftByTiers(all, targets.kcal - sumKcal(all), null);
+    }
+    const fatty = fixFat(all, targets.fat_g);
+    fixCarbs(all, targets);
+    fixSugars(all);
+    shiftByTiers(all, targets.kcal - sumKcal(all), new Set([...fatty, ...all.filter((x) => isSweet(x.food))]));
+    rescaleRecipes(wMeals, targets);
+    const rest = targets.kcal - sumKcal(all);
+    if (Math.abs(rest) > targets.kcal * 0.04) shiftByTiers(all, rest, null);
+    // a dropped extra that is needed again comes back at its minimum
+    for (const x of all.filter((o) => o.zero)) {
+      if (targets.kcal - sumKcal(all) > targets.kcal * 0.05) {
+        x.zero = false; x.locked = false; x.grams = roundFood(x.food, bounds(x.food).min);
+        shiftByTiers(all, targets.kcal - sumKcal(all), null);
+      }
+    }
+    return {
+      index: day.index, label: day.label,
+      meals: wMeals.map((m) => ({ type: m.type, label: (MEAL_LABELS[lang] || MEAL_LABELS.it)[m.type], target_kcal: Math.round(m.target), items: toMealItems(m.items, lang) })),
+    };
+  });
+  finalize(out);
+  return out;
+}
+
+/** Assemble the family plan from the shared menu (the reference member's plan). */
+function assembleFamily(menu, members, shared, refIdx, kg, opts, baseWarnings) {
+  const lang = shared.lang === 'en' ? 'en' : 'it';
+  const recipesById = opts.recipes && Array.isArray(opts.recipes.recipes)
+    ? new Map(opts.recipes.recipes.map((r) => [r.id, r])) : null;
+  indexLarn(kg);
+  const plans = members.map((m, i) => {
+    if (i === refIdx) return menu;
+    return doseMenu(menu, kg, computeTargets(memberProfile(m, shared)), recipesById, lang);
+  });
+  const warnings = [...baseWarnings];
+  // menu-level warnings (pools, quotas) once; day and LARN warnings per member
+  for (const w of menu.warnings || []) {
+    if (!menu.days.some((d) => w.startsWith(`${d.label}: `)) && !w.startsWith('LARN:')) warnings.push(w);
+  }
+  plans.forEach((p, i) => {
+    const label = memberLabel(members[i], i);
+    const own = [...p.days.flatMap((d) => dayWarnings(d, p.targets)), ...larnWarnings(p)];
+    const far = p.days.filter((d) => d.totals.kcal < p.targets.kcal * 0.9 || d.totals.kcal > p.targets.kcal * 1.1);
+    if (far.length && i !== refIdx) {
+      own.push(`le porzioni minime o massime del menu comune non permettono di restare entro il 10% dell'obiettivo in ${far.length} ${far.length === 1 ? 'giorno' : 'giorni'} (${far.map((d) => `${d.label} ${d.totals.kcal} kcal`).join(', ')}).`);
+    }
+    for (const w of own) warnings.push(`${label}: ${w}`);
+  });
+  const days = menu.days.map((day, di) => ({
+    index: day.index, label: day.label,
+    meals: day.meals.map((meal, mi) => ({
+      type: meal.type, label: meal.label,
+      items: meal.items.map((item, ii) => {
+        const base = {};
+        for (const [k, v] of Object.entries(item)) if (!MEMBER_FIELDS.includes(k)) base[k] = v;
+        const perMember = plans.map((p, k) => {
+          const x = p.days[di].meals[mi].items[ii];
+          const e = { member: k };
+          for (const f of MEMBER_FIELDS) if (x[f] !== undefined) e[f] = x[f];
+          return e;
+        });
+        const out = { ...base, per_member: perMember, total_grams: perMember.reduce((a, e) => a + e.grams, 0) };
+        // may be 0 g ("-") for some members: extras, and the merenda for members under 2200 kcal
+        if (item.slot === 'extra' || (meal.type === 'merenda' && plans.some((p) => p.targets.kcal < MERENDA_FROM_KCAL))) out.optional = true;
+        return out;
+      }),
+    })),
+    per_member_totals: plans.map((p, k) => ({ member: k, ...p.days[di].totals, larn: p.days[di].larn })),
+  }));
+  const agg = new Map();
+  for (const p of plans) for (const s of p.shopping_list) {
+    const e = agg.get(s.food_id) || { ...s, grams: 0, pieces: s.pieces === null ? null : 0 };
+    e.grams += s.grams;
+    if (e.pieces !== null && s.pieces !== null) e.pieces += s.pieces;
+    agg.set(s.food_id, e);
+  }
+  const shopping = [...agg.values()].sort((a, b) =>
+    (ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role)) || a.name.localeCompare(b.name, 'it'));
+  const week = plans.map((p, k) => ({ member: k, ...p.week_totals }));
+  return {
+    meta: { ...menu.meta, family: true, members: members.length, reference_member: refIdx, diet: shared.diet },
+    members: members.map((m, i) => ({ label: memberLabel(m, i), targets: plans[i].targets })),
+    shared: { diet: shared.diet, allergens: shared.allergens, exclude_food_ids: shared.exclude_food_ids },
+    days,
+    per_member_week_totals: week,
+    shopping_list: shopping,
+    warnings: dedupe(warnings),
+  };
+}
+
+/**
+ * Family plan: one menu for everyone (foods, recipes and order identical), doses per
+ * person toward each member's LARN targets. The menu is built for the member with the
+ * highest kcal target, with the shared constraints; for the others, items of slot "extra"
+ * are optional and may get 0 g (core slots never do).
+ * @param {Array<Profile & {label?: string}>} members 2 to 8 adults (18-80 in this version)
+ * @param {KG} kg
+ * @param {{seed?: number, days?: number, season?: string, recipes?: Object, useRecipes?: boolean}} [opts]
+ * @throws {Error} with `.errors` (Italian, prefixed by the member label)
+ */
+export function generateFamilyPlan(members, kg, opts = {}) {
+  const { shared, errors, warnings } = mergeMembers(members, opts);
+  if (errors.length) { const e = new Error(errors.join(' ')); /** @type {any} */ (e).errors = errors; throw e; }
+  // The menu is built for the member with the highest kcal target, so that the item set
+  // is enough for everyone; smaller eaters get smaller doses and may skip extra items.
+  const kcals = members.map((m) => computeTargets(memberProfile(m, shared)).kcal);
+  let refIdx = 0;
+  kcals.forEach((k, i) => { if (k > kcals[refIdx]) refIdx = i; });
+  const menu = generatePlan(memberProfile(members[refIdx], shared), kg, { ...opts, seed: shared.seed });
+  return assembleFamily(menu, members, shared, refIdx, kg, opts, warnings);
+}
+
+/**
+ * Swap one item of the family menu for everyone and recompute every member's doses.
+ * Returns a new family plan (the input is not changed).
+ */
+export function swapFamilyItem(familyPlan, kg, dayIndex, mealIndex, itemIndex, members, opts = {}) {
+  const { shared, errors, warnings } = mergeMembers(members, opts);
+  if (errors.length) { const e = new Error(errors.join(' ')); /** @type {any} */ (e).errors = errors; throw e; }
+  const refIdx = familyPlan.meta.reference_member ?? 0;
+  // the menu is the reference member's plan: rebuild it from the shared fields + its doses
+  const meta = { ...familyPlan.meta };
+  delete meta.family; delete meta.members; delete meta.reference_member;
+  const menu = {
+    meta,
+    targets: familyPlan.members[refIdx].targets,
+    days: familyPlan.days.map((d) => ({
+      index: d.index, label: d.label,
+      meals: d.meals.map((m) => ({
+        type: m.type,
+        target_kcal: Math.round(familyPlan.members[refIdx].targets.kcal * (mealPlanFor(familyPlan.members[refIdx].targets.kcal).shares[m.type] || 0)),
+        items: m.items.map((it) => {
+          const { per_member: pm, total_grams: _t, ...base } = it;
+          const own = { ...pm.find((e) => e.member === refIdx) };
+          delete own.member;
+          return deepClone({ ...base, ...own });
+        }),
+      })),
+    })),
+    week_totals: null, shopping_list: [], warnings: familyPlan.warnings.filter((w) => !members.some((m, i) => w.startsWith(`${memberLabel(m, i)}: `))),
+  };
+  finalize(menu);
+  const swapped = swapItem(menu, kg, dayIndex, mealIndex, itemIndex, memberProfile(members[refIdx], shared), opts);
+  return assembleFamily(swapped, members, shared, refIdx, kg, opts, warnings);
 }

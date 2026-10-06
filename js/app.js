@@ -6,8 +6,9 @@ import { LEGAL, LEGAL_VERSION } from './legal.js';
 import { h, clear, announce } from './ui/dom.js';
 import { strings, seasonFromDate } from './ui/i18n.js';
 import { hasConsent, renderConsent } from './ui/consent.js';
-import { defaultProfileValues, renderProfileForm, toProfile } from './ui/profile.js';
-import { renderPlan } from './ui/plan.js';
+import { defaultProfileValues, renderProfileForm, toProfile, memberLabel } from './ui/profile.js';
+import { renderFamilyPlan } from './ui/family.js';
+import { renderPlan, setFoodIndex } from './ui/plan.js';
 import { createChatState, renderChat } from './ui/chat.js';
 
 const state = {
@@ -18,6 +19,8 @@ const state = {
   dataNotice: null, // 'sample' | 'error' | null
   consent: hasConsent(LEGAL_VERSION),
   values: defaultProfileValues(seasonFromDate()),
+  family: { mode: 'single', members: [] }, // members only in memory, never stored
+  familyMembers: null, // engine members used for the current family plan
   profile: null, // profile used for the current plan
   plan: null,
   activeDay: 0,
@@ -99,7 +102,10 @@ async function loadLlm() {
 
 // ---------- actions ----------
 
-function validate(values) {
+const familyAvailable = () => typeof engine.generateFamilyPlan === 'function' && typeof engine.swapFamilyItem === 'function';
+const isFamilyMode = () => familyAvailable() && state.family.mode === 'family';
+
+function validateOne(values) {
   try {
     const res = engine.validateProfile(toProfile(values, state.lang));
     return { ok: !!res?.ok, errors: Array.isArray(res?.errors) ? res.errors : [] };
@@ -108,13 +114,38 @@ function validate(values) {
   }
 }
 
+// Shared fields (season, days, seed) come from the main form values.
+function memberProfiles() {
+  const shared = { season: state.values.season, days: state.values.days, seed: state.values.seed };
+  return state.family.members.map((m, i) => ({ label: memberLabel(m, i, t()), ...toProfile({ ...m, ...shared }, state.lang) }));
+}
+
+function validate() {
+  if (!isFamilyMode()) return validateOne(state.values);
+  const errors = [];
+  const shared = { season: state.values.season, days: state.values.days, seed: state.values.seed };
+  state.family.members.forEach((m, i) => {
+    const r = validateOne({ ...m, ...shared });
+    for (const e of r.errors) errors.push(`${memberLabel(m, i, t())}: ${e}`);
+  });
+  return { ok: errors.length === 0, errors };
+}
+
 function generate() {
   if (!state.kg) return;
+  const family = isFamilyMode();
   const profile = toProfile(state.values, state.lang);
   try {
-    state.plan = engine.generatePlan(profile, state.kg, planOpts());
+    if (family) {
+      const members = memberProfiles();
+      state.plan = engine.generateFamilyPlan(members, state.kg, planOpts());
+      state.familyMembers = members;
+    } else {
+      state.plan = engine.generatePlan(profile, state.kg, planOpts());
+      state.familyMembers = null;
+    }
     state.expandedRecipes = new Set();
-    state.profile = profile;
+    state.profile = family ? null : profile;
     state.planOpts = planOpts();
     state.activeDay = 0;
     state.view = 'menu';
@@ -133,7 +164,10 @@ function swap(d, m, i) {
   if (!state.plan) return;
   const before = state.plan.days?.[d]?.meals?.[m]?.items?.[i];
   try {
-    const next = engine.swapItem(state.plan, state.kg, d, m, i, state.profile, state.planOpts || planOpts());
+    const opts = state.planOpts || planOpts();
+    const next = state.plan?.meta?.family
+      ? engine.swapFamilyItem(state.plan, state.kg, d, m, i, state.familyMembers, opts)
+      : engine.swapItem(state.plan, state.kg, d, m, i, state.profile, opts);
     const after = next?.days?.[d]?.meals?.[m]?.items?.[i];
     const same = before && after && (before.type === 'recipe' ? after.recipe_id === before.recipe_id : after.food_id === before.food_id);
     if (!next || !after || same) {
@@ -216,11 +250,24 @@ function renderProfileSection() {
       values: state.values,
       t: t(),
       kg: state.kg,
+      family: state.family,
+      familyAvailable: familyAvailable(),
       validate,
       onSubmit: generate,
       recipesAvailable: !!state.recipes,
       onNewVariant: () => {
-        if (state.plan && validate(state.values).ok) generate();
+        if (state.plan && validate().ok) generate();
+      },
+      onModeChange: (focusMember) => {
+        renderProfileSection();
+        if (typeof focusMember === 'number') {
+          const card = ui.profile.querySelectorAll('.member-card')[focusMember];
+          const input = card && card.querySelector('input');
+          if (input) input.focus();
+        } else {
+          const checked = ui.profile.querySelector('.mode-switch input:checked');
+          if (checked) checked.focus();
+        }
       },
     }),
   );
@@ -231,8 +278,9 @@ function renderProfileSection() {
 function renderPlanSection() {
   clear(ui.plan);
   if (!state.consent || !state.plan) return;
+  const render = state.plan?.meta?.family ? renderFamilyPlan : renderPlan;
   ui.plan.append(
-    renderPlan({
+    render({
       plan: state.plan,
       t: t(),
       lang: state.lang,
@@ -294,6 +342,7 @@ function renderAll() {
 ui.langBtn.addEventListener('click', () => {
   state.lang = state.lang === 'it' ? 'en' : 'it';
   if (state.profile) state.profile = { ...state.profile, lang: state.lang };
+  if (state.familyMembers) state.familyMembers = state.familyMembers.map((m) => ({ ...m, lang: state.lang }));
   renderAll();
   ui.langBtn.focus();
 });
@@ -304,6 +353,9 @@ ui.langBtn.addEventListener('click', () => {
   ui.notice.append(h('p', { class: 'muted', role: 'status' }, t().loading_data));
   renderChrome();
   await Promise.all([loadData(), loadLlm()]);
-  if (state.kg) await loadRecipes();
+  if (state.kg) {
+    setFoodIndex(state.kg);
+    await loadRecipes();
+  }
   renderAll();
 })();

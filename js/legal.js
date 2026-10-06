@@ -3,7 +3,7 @@
 // Bump LEGAL_VERSION whenever a change affects what the user accepts
 // (the consent gate asks again when the stored legal_version differs).
 
-export const LEGAL_VERSION = "1.0.0";
+export const LEGAL_VERSION = "1.1.0";
 export const LEGAL_UPDATED = "2026-10-06";
 export const CONTACT_EMAIL = "[EMAIL DI CONTATTO]";
 
@@ -61,6 +61,7 @@ const it = {
   <li>il tuo indice di massa corporea (BMI) è sotto 18,5 o sopra 30;</li>
   <li>sei una persona anziana con fragilità, perdita di peso non voluta o poco appetito.</li>
 </ul>
+<p>In questa versione la <strong>modalità famiglia</strong> è pensata solo per adulti: non usarla per bambini o adolescenti.</p>
 <p>Se il rapporto con il cibo o con il peso ti fa stare male, puoi chiamare il numero verde <strong>SOS Disturbi Alimentari 800 180 969</strong> (gratuito e anonimo, promosso dal Ministero della Salute). La mappa dei servizi di cura in Italia è su ${a(ED_MAP_URL, "disturbialimentarionline.it")}. In caso di emergenza chiama il 112.</p>
 `,
 
@@ -72,6 +73,8 @@ const it = {
 <h3>Quali dati inserisci e dove finiscono</h3>
 <p>Per calcolare il piano inserisci sesso, età, peso, altezza, livello di attività, obiettivo, tipo di dieta e allergie. Alcuni di questi dati (per esempio peso, allergie, scelte alimentari legate alla salute) possono essere <strong>dati relativi alla salute</strong>, che il GDPR protegge in modo speciale (art. 9).</p>
 <p><strong>Tutti i calcoli avvengono nel tuo browser.</strong> Lo strumento non invia il tuo profilo a nessun server e non lo salva. L'autore non riceve, non vede e non conserva i tuoi dati. Quando chiudi o ricarichi la pagina, il profilo viene perso.</p>
+<h3>Modalità famiglia: dati di altre persone</h3>
+<p>Nella modalità famiglia puoi inserire i dati di più adulti (per esempio peso, età, allergie). Fallo solo con il loro consenso. Anche questi dati sono elaborati solo nel tuo browser e non vengono salvati.</p>
 <h3>Cosa resta salvato sul tuo dispositivo</h3>
 <ul>
   <li>Nel <code>localStorage</code> del browser: solo un record dell'accettazione dell'avviso, con la versione dei testi e la data (<code>{legal_version, accepted_at}</code>). Serve a non chiederti di nuovo il consenso a ogni visita.</li>
@@ -147,6 +150,7 @@ const en = {
   <li>have a body mass index (BMI) below 18.5 or above 30;</li>
   <li>are an older adult with frailty, unwanted weight loss or poor appetite.</li>
 </ul>
+<p>In this version <strong>family mode</strong> is for adults only: do not use it for children or adolescents.</p>
 <p>If food or weight is causing you distress, in Italy you can call the free and anonymous helpline <strong>SOS Disturbi Alimentari 800 180 969</strong>, promoted by the Italian Ministry of Health. A map of care services in Italy is at ${a(ED_MAP_URL, "disturbialimentarionline.it")}. Elsewhere, contact your doctor or local health service. In an emergency call 112.</p>
 `,
 
@@ -158,6 +162,8 @@ const en = {
 <h3>What you enter and where it goes</h3>
 <p>To compute a plan you enter sex, age, weight, height, activity level, goal, diet type and allergies. Some of these (for example weight, allergies, health related food choices) can be <strong>data concerning health</strong>, which the GDPR treats as a special category (Art. 9).</p>
 <p><strong>All calculations run in your browser.</strong> The tool does not send your profile to any server and does not save it. The author does not receive, see or keep your data. When you close or reload the page, the profile is gone.</p>
+<h3>Family mode: other people's data</h3>
+<p>In family mode you can enter data for several adults (for example weight, age, allergies). Do this only with their consent. This data is also processed only in your browser and is not saved.</p>
 <h3>What stays on your device</h3>
 <ul>
   <li>In the browser <code>localStorage</code>: only a record that you accepted the notice, with the text version and date (<code>{legal_version, accepted_at}</code>), so you are not asked again on every visit.</li>

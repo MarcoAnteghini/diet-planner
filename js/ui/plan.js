@@ -4,20 +4,20 @@ import { unitLabel } from './i18n.js';
 
 const MACRO_KCAL = { protein_g: 4, carbs_g: 4, fat_g: 9 };
 
-function householdText(hh) {
+export function householdText(hh) {
   if (!hh || typeof hh !== 'string') return '';
   return hh.toLowerCase().replace(/_/g, ' ');
 }
 
-function gramsText(g, lang) {
+export function gramsText(g, lang) {
   if (g === null || g === undefined) return '-';
   if (g >= 1000) return `${fmt(g / 1000, 2, lang)} kg`;
   return `${fmt(g, 0, lang)} g`;
 }
 
-const num = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+export const num = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
 
-function itemName(item) {
+export function itemName(item) {
   return item.display_name || item.name || '';
 }
 
@@ -31,6 +31,7 @@ function quantityCell(item, t, lang) {
       grams !== null ? h('span', { class: 'household' }, t.approx_g(fmt(grams, 0, lang))) : null,
     ];
   }
+  if (grams === 0 && !(pieces > 0)) return [t.qb];
   const hh = householdText(item.household);
   const out = [gramsText(grams, lang)];
   if (item.basis === 'crudo') out.push(' ', h('span', { class: 'tag', title: t.raw_weight }, t.raw_tag));
@@ -40,21 +41,32 @@ function quantityCell(item, t, lang) {
 
 // Aggregates the shopping list. Prefers the engine list when it carries v2 fields,
 // otherwise rebuilds it from the plan items (gross grams and pieces).
+// Shopping list order: breakfast items, fruit, cereals, protein, vegetables, fats, spreads,
+// then herbs, salt and anything else. Roles come from the item or from foods.json.
+const SHOP_ORDER = ['bevanda_colazione', 'base_colazione', 'frutta', 'snack', 'base_principale', 'secondo', 'contorno', 'condimento', 'spalmabile'];
+let foodRoles = new Map();
+export function setFoodIndex(kg) {
+  foodRoles = new Map((Array.isArray(kg?.foods) ? kg.foods : []).map((f) => [String(f.id), f.role || null]));
+}
+function shopRank(it) {
+  const role = it.role || foodRoles.get(String(it.food_id)) || null;
+  const i = SHOP_ORDER.indexOf(role);
+  return i === -1 ? SHOP_ORDER.length : i;
+}
+
 function shoppingItems(plan) {
   const engineList = Array.isArray(plan.shopping_list) ? plan.shopping_list : [];
   const engineV2 = engineList.some((it) => 'display_name' in it || 'pieces' in it);
   if (engineV2 || !(plan.days || []).length) {
-    const list = engineList.map((it) => ({ name: itemName(it), full: it.name, grams: num(it.grams), pieces: num(it.pieces), unit_label: it.unit_label_plural || it.unit_label || null }));
-    list.ordered = true;
-    return list;
+    return engineList.map((it) => ({ food_id: it.food_id, role: it.role, name: itemName(it), full: it.name, grams: num(it.grams), pieces: num(it.pieces), unit_label: it.unit_label_plural || it.unit_label || null }));
   }
   const agg = new Map();
   for (const day of plan.days || []) {
     for (const meal of day.meals || []) {
       for (const it of (meal.items || []).flatMap((x) => (isRecipe(x) ? x.components : [x]))) {
         const key = it.food_id ?? itemName(it);
-        const cur = agg.get(key) || { name: itemName(it), full: it.name, grams: 0, pieces: 0, unit_label: null, allPieces: true };
-        cur.grams += num(it.grams) || 0;
+        const cur = agg.get(key) || { food_id: it.food_id, role: it.role, name: itemName(it), full: it.name, grams: 0, pieces: 0, unit_label: null, allPieces: true };
+        cur.grams += num(it.grams) ?? num(it.total_grams) ?? 0;
         if (num(it.pieces) && it.unit_label) {
           cur.pieces += it.pieces;
           if (it.pieces > 1 || !cur.unit_label) cur.unit_label = it.unit_label;
@@ -68,7 +80,7 @@ function shoppingItems(plan) {
 
 const RANGE_LABELS = { protein: 'protein', protein_g: 'protein', protein_pct: 'protein', carbs: 'carbs', carbs_g: 'carbs', carbs_pct: 'carbs', fat: 'fat', fat_g: 'fat', fat_pct: 'fat', kcal: 'kcal' };
 
-function rangeList(ranges, t, lang) {
+export function rangeList(ranges, t, lang) {
   if (!ranges || typeof ranges !== 'object') return null;
   const rows = [];
   for (const [key, val] of Object.entries(ranges)) {
@@ -91,7 +103,7 @@ function rangeList(ranges, t, lang) {
   return rows.length ? h('div', { class: 'ranges' }, h('p', { class: 'ranges-title' }, t.ranges_title), h('ul', {}, rows)) : null;
 }
 
-function larnLimits(targets, t, lang) {
+export function larnLimits(targets, t, lang) {
   const parts = [];
   if (num(targets?.fiber_g) !== null) parts.push(t.fiber_min(fmt(targets.fiber_g, 0, lang)));
   if (num(targets?.sugars_max_g) !== null) parts.push(t.sugars_max(fmt(targets.sugars_max_g, 0, lang)));
@@ -121,7 +133,7 @@ function targetsSummary(targets, t, lang) {
   );
 }
 
-function macroBar(totals, targets, t, lang) {
+export function macroBar(totals, targets, t, lang) {
   const kcalOf = (k) => (Number(totals?.[k]) || 0) * MACRO_KCAL[k];
   const parts = [
     ['protein_g', t.protein, 'seg-protein'],
@@ -163,11 +175,11 @@ function macroBar(totals, targets, t, lang) {
 }
 
 // Recipe context, set by renderPlan: recipes.json lookup and the set of expanded rows.
-let recipeCtx = { byId: new Map(), expanded: new Set() };
+export let recipeCtx = { byId: new Map(), expanded: new Set() };
 
-const isRecipe = (item) => item?.type === 'recipe' && Array.isArray(item.components);
+export const isRecipe = (item) => item?.type === 'recipe' && Array.isArray(item.components);
 
-function swapButton(name, dayIndex, mealIndex, itemIndex, t, onSwap) {
+export function swapButton(name, dayIndex, mealIndex, itemIndex, t, onSwap) {
   return h(
     'td',
     { class: 'swap-cell no-print' },
@@ -309,7 +321,7 @@ function mealCard(meal, dayIndex, mealIndex, t, lang, onSwap) {
   );
 }
 
-function macroShort(totals, t, lang) {
+export function macroShort(totals, t, lang) {
   if (!totals) return '';
   const f = lang === 'en' ? 'F' : 'G';
   const nb = (x) => x.replace(/ /g, '\u00a0'); // keep "C 24 g" on one line
@@ -332,7 +344,7 @@ function dayPanel(day, d, plan, t, lang, onSwap, active) {
   );
 }
 
-function dayTabs(plan, activeDay, t, onDayChange) {
+export function dayTabs(plan, activeDay, t, onDayChange) {
   const tabs = (plan.days || []).map((day, d) =>
     h(
       'button',
@@ -365,10 +377,8 @@ function dayTabs(plan, activeDay, t, onDayChange) {
   return list;
 }
 
-function shoppingList(plan, t, lang) {
-  // The engine list is already ordered by food role (aisle-like); keep that order when present.
-  const items = shoppingItems(plan);
-  if (!items.ordered) items.sort((a, b) => String(a.name).localeCompare(String(b.name), lang));
+export function shoppingList(plan, t, lang) {
+  const items = shoppingItems(plan).sort((a, b) => shopRank(a) - shopRank(b) || String(a.name).localeCompare(String(b.name), lang));
   const qty = (it) =>
     it.pieces
       ? `${fmt(it.pieces, 1, lang)}${it.unit_label ? ` ${unitLabel(it.unit_label, it.pieces, lang)}` : ''}${it.grams ? ` (${t.approx_g(fmt(it.grams, 0, lang))})` : ''}`

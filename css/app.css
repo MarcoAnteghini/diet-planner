@@ -493,6 +493,78 @@ table.components { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .recipe-steps ol { margin: 0; padding-left: 1.2em; }
 .recipes-opt { margin-top: 16px; }
 
+/* Mode switch and family form */
+.form-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.form-head h2 { margin: 0; }
+.mode-switch { border: 1px solid var(--border); border-radius: 8px; padding: 0; margin: 0; display: inline-flex; overflow: hidden; }
+.mode-opt label { display: inline-block; padding: 8px 14px; min-height: 40px; cursor: pointer; font-weight: 600; background: var(--surface); }
+.mode-opt + .mode-opt label { border-left: 1px solid var(--border); }
+.mode-opt input:checked + label { background: var(--accent); color: var(--accent-text); }
+.mode-opt input:focus-visible + label { outline: 3px solid var(--focus); outline-offset: -3px; }
+.family-note p { margin: 0 0 4px; }
+.members { display: grid; gap: 12px; }
+.member-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 0; min-width: 0; }
+.member-card > legend { font-weight: 700; padding: 0 6px; }
+.member-label { margin-bottom: 12px; max-width: 320px; }
+.member-label input[type="text"] { font: inherit; }
+.member-actions { display: flex; justify-content: flex-end; }
+fieldset.shared { border: 0; padding: 0; margin: 16px 0 0; }
+fieldset.shared > legend { font-weight: 700; font-size: 1rem; margin-bottom: 8px; }
+input[type="text"] { min-height: 44px; }
+
+/* Family plan */
+.fam-meals { display: grid; gap: 12px; }
+.fam-table { --n: 2; font-size: 0.925rem; }
+.fam-row {
+  display: grid;
+  /* Fixed last column so header, item and component rows line up. */
+  grid-template-columns: minmax(9rem, 1.6fr) repeat(var(--n), minmax(4.75rem, 1fr)) 6.5rem;
+  gap: 4px 10px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.fam-head { font-size: 0.8rem; color: var(--muted); font-weight: 600; padding-top: 0; }
+.fam-head .fam-col { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fam-row .doses { display: contents; list-style: none; }
+.fam-row .dose { text-align: right; font-variant-numeric: tabular-nums; min-width: 0; }
+.fam-row .who { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.dose-main { display: block; white-space: nowrap; }
+.dose-sub { display: block; font-size: 0.75rem; color: var(--muted); }
+.fam-name { min-width: 0; overflow-wrap: break-word; }
+.item-sub { display: block; font-size: 0.8rem; color: var(--muted); }
+.fam-swap { justify-self: end; }
+.fam-comp { font-size: 0.85rem; background: var(--surface-2); padding-left: 8px; padding-right: 8px; }
+.fam-comp .fam-name { padding-left: 12px; }
+.fam-detail { background: var(--surface-2); border-radius: 0 0 6px 6px; margin-bottom: 4px; padding-bottom: 6px; }
+.fam-detail[hidden] { display: none; }
+.member-totals { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+@media (min-width: 760px) {
+  .member-totals { grid-template-columns: 1fr 1fr; }
+}
+.table-scroll { overflow-x: auto; margin-bottom: 12px; }
+table.member-targets { width: 100%; border-collapse: collapse; font-size: 0.925rem; }
+.member-targets th, .member-targets td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+.member-targets .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.member-targets thead th { font-size: 0.8rem; color: var(--muted); }
+
+@media (max-width: 639px) {
+  /* Phones: each row lists the doses inline, "Marco 100 g · Anna 70 g". */
+  .fam-head { display: none; }
+  .fam-row { grid-template-columns: 1fr auto; }
+  .fam-comp { grid-template-columns: 1fr; }
+  .fam-row .doses { display: flex; flex-wrap: wrap; gap: 2px 0; grid-column: 1 / 2; margin: 0; padding: 0; }
+  .fam-row .dose { text-align: left; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; }
+  .fam-row .dose-none { display: none; }
+  /* Separator before every visible dose that follows another visible one. */
+  .fam-row .dose:not(.dose-none) ~ .dose:not(.dose-none)::before { content: "\00b7"; color: var(--muted); padding: 0 8px 0 4px; }
+  .fam-row .who { position: static; width: auto; height: auto; clip: auto; overflow: visible; color: var(--muted); }
+  .dose-main { display: inline; }
+  .dose-sub { display: none; }
+  .fam-swap { grid-column: 2; grid-row: 1 / span 2; }
+  .fam-comp .doses { grid-column: 1 / -1; }
+}
+
 /* Chat */
 details.chat > summary {
   cursor: pointer;
@@ -561,6 +633,10 @@ details.chat[open] > summary::before { transform: rotate(45deg); }
   .recipe-detail[hidden] { display: table-row !important; }
   .recipe-toggle .chev { display: none; }
   .recipe-sub { margin-left: 0; }
+  .fam-detail[hidden] { display: block !important; }
+  .fam-row { grid-template-columns: minmax(9rem, 1.6fr) repeat(var(--n), minmax(4.75rem, 1fr)) 0; }
+  .fam-meal { break-inside: auto; }
+  .fam-row { break-inside: avoid; }
   .meals { grid-template-columns: 1fr 1fr; }
   .macro-bar, .seg, .dot, .kcal-fill, .stat { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .site-footer { border: 0; font-size: 8pt; }
