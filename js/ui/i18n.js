@@ -73,7 +73,7 @@ const STRINGS = {
     swap_none: 'Nessuna alternativa disponibile per questo alimento.',
     macro_bar: 'Ripartizione dell\'energia tra i macronutrienti',
     warnings: 'Avvisi',
-    shopping_total: (d) => `Quantità totali per ${d} ${d === 1 ? 'giorno' : 'giorni'}`,
+    shopping_total: (d) => `Quantità totali per ${d} ${d === 1 ? 'giorno' : 'giorni'}.`,
     print: 'Stampa',
     download_json: 'Scarica JSON',
     plan_generated: (d) => `Piano generato per ${d} ${d === 1 ? 'giorno' : 'giorni'}.`,
@@ -107,6 +107,18 @@ const STRINGS = {
     usage: (u) => `Token: ${u.input_tokens ?? u.prompt_tokens ?? '?'} in, ${u.output_tokens ?? u.completion_tokens ?? '?'} out`,
     legal_link: 'Note legali e privacy',
     truncated: 'Risposta interrotta per lunghezza.',
+    approx_g: (g) => `circa ${g} g`,
+    raw_tag: 'crudo',
+    raw_weight: 'peso a crudo',
+    basis_note: 'Le quantità si riferiscono al peso a crudo e, per la frutta, al frutto intero.',
+    shopping_gross: 'Pesi lordi, come si acquistano.',
+    ranges_title: 'Intervalli di riferimento usati (LARN):',
+    limits_title: 'Riferimenti LARN giornalieri:',
+    fiber_min: (g) => `fibra almeno ${g} g`,
+    sugars_max: (g) => `zuccheri al massimo ${g} g`,
+    sfa_max: (g) => `grassi saturi al massimo ${g} g`,
+    method: 'Calcolo del fabbisogno',
+    sources_line: 'Porzioni e fabbisogni secondo LARN 2014 (SINU) e Linee guida CREA 2018.',
     get_key: (name) => `Dove ottenere una chiave ${name} (si apre in una nuova scheda)`,
   },
   en: {
@@ -181,7 +193,7 @@ const STRINGS = {
     swap_none: 'No alternative available for this food.',
     macro_bar: 'Energy split across macronutrients',
     warnings: 'Warnings',
-    shopping_total: (d) => `Total amounts for ${d} ${d === 1 ? 'day' : 'days'}`,
+    shopping_total: (d) => `Total amounts for ${d} ${d === 1 ? 'day' : 'days'}.`,
     print: 'Print',
     download_json: 'Download JSON',
     plan_generated: (d) => `Plan generated for ${d} ${d === 1 ? 'day' : 'days'}.`,
@@ -215,6 +227,18 @@ const STRINGS = {
     usage: (u) => `Tokens: ${u.input_tokens ?? u.prompt_tokens ?? '?'} in, ${u.output_tokens ?? u.completion_tokens ?? '?'} out`,
     legal_link: 'Legal notes and privacy',
     truncated: 'Answer cut short for length.',
+    approx_g: (g) => `about ${g} g`,
+    raw_tag: 'raw',
+    raw_weight: 'raw weight',
+    basis_note: 'Amounts refer to raw weight and, for fruit, to the whole fruit.',
+    shopping_gross: 'Gross weights, as bought.',
+    ranges_title: 'Reference ranges used (LARN):',
+    limits_title: 'Daily LARN references:',
+    fiber_min: (g) => `fibre at least ${g} g`,
+    sugars_max: (g) => `sugars at most ${g} g`,
+    sfa_max: (g) => `saturated fat at most ${g} g`,
+    method: 'Energy requirement method',
+    sources_line: 'Portions and requirements follow LARN 2014 (SINU) and the CREA 2018 dietary guidelines.',
     get_key: (name) => `Where to get a ${name} key (opens in a new tab)`,
   },
 };
@@ -229,4 +253,34 @@ export function seasonFromDate(date = new Date()) {
   if (m <= 4) return 'primavera';
   if (m <= 7) return 'estate';
   return 'autunno';
+}
+
+// Plural of a unit label ("mela" -> "mele", "fetta biscottata" -> "fette biscottate").
+// The data only carries the singular; this covers the regular cases.
+const IT_IRREGULAR = { uovo: 'uova', paio: 'paia', yogurt: 'yogurt', kiwi: 'kiwi' };
+function pluralIt(word) {
+  const w = word.toLowerCase();
+  if (IT_IRREGULAR[w]) return IT_IRREGULAR[w];
+  if (/(ca|ga)$/.test(w)) return `${word.slice(0, -1)}he`;
+  if (/(co|go)$/.test(w) && w.length > 4) return `${word.slice(0, -1)}hi`;
+  if (/[^aeiou](cia|gia)$/.test(w)) return `${word.slice(0, -2)}e`; // arancia -> arance
+  if (/(cia|gia)$/.test(w)) return `${word.slice(0, -1)}e`; // ciliegia -> ciliegie
+  if (/io$/.test(w)) return `${word.slice(0, -1)}`;
+  if (/a$/.test(w)) return `${word.slice(0, -1)}e`;
+  if (/[oe]$/.test(w)) return `${word.slice(0, -1)}i`;
+  return word; // consonant, accented or -i endings stay the same
+}
+function pluralEn(word) {
+  if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
+  if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+  return `${word}s`;
+}
+export function unitLabel(label, count, lang) {
+  if (!label || !(count > 1)) return label || '';
+  if (lang === 'en') {
+    const parts = label.split(' ');
+    parts[parts.length - 1] = pluralEn(parts[parts.length - 1]);
+    return parts.join(' ');
+  }
+  return label.split(' ').map((w) => (/^(di|da|al|con|in|e)$/i.test(w) ? w : pluralIt(w))).join(' ');
 }

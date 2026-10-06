@@ -397,8 +397,22 @@ table.items { width: 100%; border-collapse: collapse; font-size: 0.925rem; }
 .items tfoot th, .items tfoot td { border-bottom: 0; font-size: 0.85rem; }
 .items .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .items .macros-cell { white-space: normal; color: var(--muted); }
-.item-name { overflow-wrap: anywhere; }
+.item-name { overflow-wrap: break-word; hyphens: auto; }
+@media (max-width: 559px) {
+  /* Narrow screens: icon-only swap button (it keeps its aria-label), full CIQUAL name only as tooltip. */
+  .swap-text { display: none; }
+  .btn-small { padding: 6px 10px; min-width: 40px; }
+  .items .full-name { display: none; }
+  .items .num .tag { display: block; width: max-content; margin-left: auto; }
+}
 .household { display: block; font-size: 0.8rem; color: var(--muted); }
+.full-name { display: block; font-size: 0.75rem; color: var(--muted); font-weight: 400; }
+.tag { display: inline-block; font-size: 0.7rem; font-weight: 600; line-height: 1.4; padding: 0 6px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); vertical-align: 1px; }
+.basis-note { font-size: 0.85rem; margin-top: 12px; }
+.ranges { font-size: 0.875rem; margin: -4px 0 12px; }
+.ranges-title { margin: 0 0 2px; font-weight: 600; }
+.ranges ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 2px 16px; color: var(--muted); }
+.method-line { font-size: 0.85rem; }
 .swap-cell { width: 1%; text-align: right; }
 
 .day-total { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }

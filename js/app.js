@@ -124,7 +124,7 @@ function swap(d, m, i) {
     renderPlanSection();
     const btn = ui.plan.querySelector(`[data-swap="${d}:${m}:${i}"]`);
     if (btn) btn.focus();
-    announce(ui.live, t().swapped(before?.name || '', after.name));
+    announce(ui.live, t().swapped(before?.display_name || before?.name || '', after.display_name || after.name));
   } catch (err) {
     console.error(err);
     announce(ui.live, `${t().engine_error} ${err?.message || err}`);
@@ -150,7 +150,7 @@ function renderChrome() {
   document.documentElement.lang = state.lang;
   document.title = s.app_title;
   ui.title.textContent = s.app_title;
-  ui.subtitle.textContent = s.app_subtitle;
+  ui.subtitle.textContent = `${s.app_subtitle} ${s.sources_line}`;
   ui.skip.textContent = s.skip;
   ui.langBtn.textContent = s.lang_toggle;
   ui.langBtn.setAttribute('aria-label', s.lang_toggle_label);

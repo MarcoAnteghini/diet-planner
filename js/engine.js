@@ -50,13 +50,18 @@
 
 /**
  * @typedef {Object} Targets
- * @property {number} bmr       kcal/day, Mifflin-St Jeor
- * @property {number} tdee      kcal/day, bmr * activity factor
+ * @property {number} bmr       kcal/day, LARN 2014 (FAO/WHO/UNU 1985 equations)
+ * @property {number} tdee      kcal/day, bmr * LAF
  * @property {number} kcal      daily energy target after goal adjustment
  * @property {number} protein_g
  * @property {number} carbs_g
  * @property {number} fat_g
  * @property {number} bmi
+ * @property {number} fiber_g      LARN SDT minimum
+ * @property {number} sugars_max_g 15% En
+ * @property {number} sfa_max_g    10% En
+ * @property {number} laf
+ * @property {string} method
  */
 
 /**
@@ -64,8 +69,16 @@
  * @property {string} food_id
  * @property {string} name
  * @property {string} role
- * @property {string} slot       template slot: bevanda, base, frutta, spuntino, proteina, contorno, condimento
- * @property {number} grams
+ * @property {string} display_name short everyday name (display_name_it/en, fallback name_it)
+ * @property {string} slot       template slot: bevanda, base, frutta, spuntino, proteina, contorno, condimento, extra
+ * @property {number} grams      gross weight as bought (raw rice, whole fruit)
+ * @property {"crudo"|"pronto"} basis
+ * @property {number} edible_g   grams * edible_fraction; nutrients are computed on this
+ * @property {number|null} pieces  half-piece steps when the food has a unit
+ * @property {string|null} unit_label
+ * @property {number|null} sugars_g
+ * @property {number|null} fiber_g
+ * @property {number|null} sfa_g
  * @property {number} kcal
  * @property {number} protein_g
  * @property {number} carbs_g
@@ -74,20 +87,26 @@
  * @property {string} [category] protein category for role "secondo"
  */
 
-export const ENGINE_VERSION = '1.0.0';
+export const ENGINE_VERSION = '2.0.0';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 export const SEXES = ['m', 'f'];
+/**
+ * LAF (livello di attività fisica) per activity level. LARN 2014 (SINU, IV revisione)
+ * computes adult energy requirements as MB x LAF over four levels, from 1.45
+ * (sedentary, hypokinetic profile) to 2.10 (marked physical exertion): 1.45, 1.60,
+ * 1.75, 2.10. Our enum has five levels: "leggero" is the midpoint between the first two
+ * LARN levels (our interpolation, not a LARN value).
+ */
 export const ACTIVITY_FACTORS = {
-  // Classic PAL multipliers (McArdle, Katch and Katch; also used by FAO/WHO/UNU 2004 ranges).
-  sedentario: 1.2,
-  leggero: 1.375,
-  moderato: 1.55,
-  attivo: 1.725,
-  molto_attivo: 1.9,
+  sedentario: 1.45,
+  leggero: 1.53,
+  moderato: 1.60,
+  attivo: 1.75,
+  molto_attivo: 2.10,
 };
 export const GOALS = ['dimagrire', 'mantenimento', 'massa'];
 export const SEASONS = ['inverno', 'primavera', 'estate', 'autunno'];
@@ -103,8 +122,23 @@ const DAY_LABELS = {
   en: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
 };
 
-/** Share of the daily kcal target per meal (sums to 1). */
-export const MEAL_SHARES = { colazione: 0.25, spuntino: 0.10, pranzo: 0.35, cena: 0.30 };
+/**
+ * Share of the daily kcal target per meal (sums to 1). Italian dietetic practice based on
+ * LARN 2014 suggests colazione 15-20%, spuntino 5% + merenda 5-10%, pranzo 35-40%,
+ * cena 30-35%. We have one snack, so it takes both small snacks (10%).
+ */
+export const MEAL_SHARES = { colazione: 0.20, spuntino: 0.10, pranzo: 0.40, cena: 0.30 };
+
+/**
+ * LARN 2014 (SINU, IV revisione) reference intakes used for targets and warnings.
+ * Carbohydrates RI 45-60% En, sugars SDT < 15% En, fiber SDT >= 25 g/day (adults),
+ * total fat RI 20-35% En, saturated fat SDT < 10% En, protein PRI 0.9 g/kg/day
+ * (adults 18-59), 1.1 g/kg/day from 60 years. Reference body weight: BMI 22.5.
+ */
+export const LARN = {
+  carbs_pct: [45, 60], sugars_pct_max: 15, fiber_g_min: 25, fat_pct: [20, 35], sfa_pct_max: 10,
+  fat_pct_target: 30, protein_pri: 0.9, protein_pri_60: 1.1, bmi_ref: 22.5,
+};
 
 /**
  * Meal templates. Each slot draws one food from `roles` and gets `share` of the meal kcal.
@@ -132,12 +166,17 @@ const TEMPLATES = {
 /** Spuntino gets two items (fruit + snack) when its budget reaches this many kcal. */
 const SPUNTINO_SPLIT_KCAL = 220;
 
-/** Extra items added, in this order, when a day stays more than 3% under target (never fruit). */
-const EXTRA_SLOTS = [['spuntino', 'snack'], ['colazione', 'base_colazione'], ['colazione', 'snack'],
-  ['pranzo', 'base_principale'], ['cena', 'base_principale'], ['spuntino', 'snack']];
+/**
+ * Extra items added, in this order, when a day stays more than 3% under target, after the
+ * existing bases were raised within bounds: a plain snack, then bread at lunch and dinner.
+ * Never at breakfast (max 3 items), never fruit, spuntino max 2 items. Walked twice.
+ */
+const EXTRA_SLOTS = [['spuntino', 'snack'], ['pranzo', 'base_principale'], ['cena', 'base_principale']];
+/** Maximum items per meal: breakfast is drink + base + fruit (or yogurt), snack 1-2 items. */
+const MAX_ITEMS = { colazione: 3, spuntino: 2, pranzo: 6, cena: 6 };
 
 /** Where a protein-dense extra item may be added when the day is short on protein. */
-const PROTEIN_EXTRA_SLOTS = [['spuntino', 'snack'], ['spuntino', 'bevanda_colazione'], ['colazione', 'snack']];
+const PROTEIN_EXTRA_SLOTS = [['spuntino', 'snack'], ['spuntino', 'bevanda_colazione']];
 
 /** Minimum meal suitability score (0..10) for a food to be used in a meal. */
 const MIN_MEAL_SCORE = 5;
@@ -242,16 +281,70 @@ export function roundGrams(g, min, max) {
   return clamp(Math.round(g / 5) * 5, lo, hi);
 }
 
-const kcal100 = (f) => (f.per100g && isNum(f.per100g.kcal) ? f.per100g.kcal : 0);
-const prot100 = (f) => (f.per100g && isNum(f.per100g.protein) ? f.per100g.protein : 0);
-const nutr = (f, key) => (f.per100g && isNum(f.per100g[key]) ? f.per100g[key] : 0);
+/**
+ * Weights are gross, as bought (contract v2): per100g refers to the edible part, so
+ * nutrients = grams * edible_fraction * per100g / 100. The helpers below return values
+ * per 100 g of GROSS weight. Defaults: edible_fraction 1, weight_basis "pronto", priority 5.
+ */
+const edibleFraction = (f) => (isNum(f.edible_fraction) && f.edible_fraction > 0 && f.edible_fraction <= 1 ? f.edible_fraction : 1);
+const nutr = (f, key) => (f.per100g && isNum(f.per100g[key]) ? f.per100g[key] * edibleFraction(f) : 0);
+const kcal100 = (f) => nutr(f, 'kcal');
+const prot100 = (f) => nutr(f, 'protein');
+const priorityOf = (f) => (isNum(f.priority) ? clamp(f.priority, 0, 10) : 5);
+/** Saturated fat per 100 g edible, if the KG provides it under any common key. */
+const SFA_KEYS = ['sfa', 'saturated', 'saturated_fat', 'fat_saturated', 'fasat'];
+function sfaKey(f) { return f.per100g ? SFA_KEYS.find((k) => isNum(f.per100g[k])) : undefined; }
 
-/** Grams that deliver `targetKcal`, inside the food's portion bounds. */
+/** One piece (fruit, egg, roll, pot) when the KG gives it. */
+function unitOf(f) { const u = f.unit; return u && isNum(u.grams) && u.grams > 0 ? u : null; }
+/**
+ * Piece step for unit foods: whole pieces (fruit, eggs, yogurt pots), half pieces only for
+ * bread rolls; null when no step fits the bounds (then 5 g rounding).
+ */
+function pieceStep(f) {
+  const u = unitOf(f);
+  if (!u) return null;
+  const b = bounds(f);
+  const fit = (st) => ({ st, lo: Math.max(1, Math.ceil(b.min / st - 1e-9)), hi: Math.floor(b.max / st + 1e-9) });
+  // whole pieces (fruit, eggs, yogurt pots); half pieces only for bread rolls
+  const whole = fit(u.grams);
+  if (isBread(f)) {
+    const half = fit(u.grams / 2);
+    if (half.lo <= half.hi) return half;
+  }
+  return whole.lo <= whole.hi ? whole : null;
+}
+/** Smallest grams step of a food: one (or half a) piece for unit foods, else 5 g. */
+function stepOf(f) { const p = pieceStep(f); return p ? p.st : 5; }
+
+/**
+ * Round grams for a food inside its portion bounds: whole pieces (or half pieces) for
+ * unit foods, multiples of 5 g otherwise.
+ */
+export function roundFood(food, g) {
+  const p = pieceStep(food);
+  if (p) return Math.round(clamp(Math.round(g / p.st), p.lo, p.hi) * p.st);
+  const b = bounds(food);
+  return roundGrams(g, b.min, b.max);
+}
+
+/** LARN standard portion (grams, as bought) per food, filled from kg.larn by indexLarn. */
+const LARN_PORTION = new WeakMap();
+
+/**
+ * Grams that deliver `targetKcal`, inside the food's portion bounds. When a LARN standard
+ * portion is known, snap to the nearest half-portion multiple if that is within 20%.
+ */
 function sizeFor(food, targetKcal) {
   const b = bounds(food);
   const k = kcal100(food);
-  if (k <= 0) return roundGrams(b.typ, b.min, b.max);
-  return roundGrams((targetKcal / k) * 100, b.min, b.max);
+  let g = k > 0 ? (targetKcal / k) * 100 : b.typ;
+  const lp = LARN_PORTION.get(food);
+  if (lp && !unitOf(food)) {
+    const m = Math.round(g / (lp / 2)) * (lp / 2);
+    if (m >= b.min && m <= b.max && Math.abs(m - g) <= 0.2 * g) g = m;
+  }
+  return roundFood(food, g);
 }
 
 /**
@@ -351,31 +444,53 @@ export function validateProfile(profile) {
 // ---------------------------------------------------------------------------
 
 /**
- * Energy and macro targets.
+ * LARN 2014 basal metabolic rate (MB), kcal/day, from body weight by sex and age band.
+ * LARN 2014 adopts the FAO/WHO/UNU 1985 (Schofield) equations, with Italian bands for
+ * the elderly (60-74, >=75):
+ *   men   18-29: 15.3*kg + 679   30-59: 11.6*kg + 879   60-74: 11.9*kg + 700   >=75: 8.4*kg + 819
+ *   women 18-29: 14.7*kg + 496   30-59: 8.7*kg + 829    60-74: 9.2*kg + 688    >=75: 9.8*kg + 624
+ * Source: SINU, LARN IV revisione 2014, energy chapter; equations as tabulated in the
+ * SIE review "Fabbisogno energetico" (Tabella 1, "LARN (FAO/WHO/UNU, 1985)").
+ * @param {Sex} sex @param {number} age @param {number} kg
+ */
+export function larnBmr(sex, age, kg) {
+  const m = sex === 'm';
+  if (age < 30) return m ? 15.3 * kg + 679 : 14.7 * kg + 496;
+  if (age < 60) return m ? 11.6 * kg + 879 : 8.7 * kg + 829;
+  if (age < 75) return m ? 11.9 * kg + 700 : 9.2 * kg + 688;
+  return m ? 8.4 * kg + 819 : 9.8 * kg + 624;
+}
+
+/** Mifflin-St Jeor BMR (Mifflin et al., Am J Clin Nutr 1990), kept for comparison only. */
+export function mifflinBmr(sex, age, kg, cm) {
+  return 10 * kg + 6.25 * cm - 5 * age + (sex === 'm' ? 5 : -161);
+}
+
+/**
+ * Energy and macro targets following LARN 2014 (SINU, IV revisione).
  *
- * BMR: Mifflin-St Jeor (Mifflin et al., Am J Clin Nutr 1990;51:241-7)
- *   men:   10*kg + 6.25*cm - 5*age + 5
- *   women: 10*kg + 6.25*cm - 5*age - 161
- * TDEE = BMR * activity factor (see ACTIVITY_FACTORS).
- * Goal:
- *   dimagrire: TDEE - min(15% TDEE, 500 kcal), never below max(BMR, 1200 f / 1500 m)
- *   mantenimento: TDEE
- *   massa: TDEE + 10%
- * Protein (g/kg of reference weight): 1.0 mantenimento (above the 0.8-0.9 PRI of
- *   LARN 2014), 1.4 dimagrire (preserve lean mass in deficit), 1.6 massa (Morton et al.,
- *   Br J Sports Med 2018). Reference weight is the actual weight, or for BMI >= 30 the
- *   adjusted weight IBW + 0.4*(actual - IBW) with IBW at BMI 25. Capped at 2.0 g/kg and
- *   at 30% of kcal.
- * Fat: 28% of kcal (LARN 2014 reference range 20-35%, we stay in the 25-30% band).
- * Carbohydrates: the remaining kcal / 4 (Atwater factors 4/4/9).
- * kcal is rounded to 10, macros to whole grams.
+ * Energy: MB from larnBmr() on the actual body weight, times LAF (ACTIVITY_FACTORS).
+ *   The Schofield equations are weight based and were derived on actual weights, so the
+ *   actual weight is used for energy.
+ * Goal (our choice, not LARN): dimagrire = TDEE - min(15%, 500 kcal), never below
+ *   max(MB, 1200 f / 1500 m); massa = TDEE + 10%.
+ * Protein: LARN PRI 0.9 g/kg/day (18-59 y), 1.1 g/kg/day (>= 60 y), on the reference
+ *   weight: the actual weight when BMI is 18.5-25, otherwise the weight at BMI 22.5
+ *   (LARN example weights use BMI 22.5). Goal factor, modest and documented: dimagrire
+ *   x1.3 (about 1.2 g/kg, preserves lean mass in deficit), massa x1.5 (about 1.35 g/kg),
+ *   capped at 2.0 g/kg and 25% En.
+ * Fat: 30% En (LARN RI 20-35% En). If carbohydrates would exceed 60% En, fat rises
+ *   up to 35% En; carbohydrates take the rest (LARN RI 45-60% En).
+ * Sugars max 15% En, fiber >= 25 g/day, saturated fat max 10% En (LARN SDT).
+ * Atwater factors 4/4/9. kcal rounded to 10, macros to whole grams.
  * @param {Profile} profile
  * @returns {Targets}
  */
 export function computeTargets(profile) {
   const { sex, age, weight_kg: w, height_cm: h, activity, goal } = profile;
-  const bmr = 10 * w + 6.25 * h - 5 * age + (sex === 'm' ? 5 : -161);
-  const tdee = bmr * (ACTIVITY_FACTORS[activity] || 1.2);
+  const laf = ACTIVITY_FACTORS[activity] || ACTIVITY_FACTORS.sedentario;
+  const bmr = larnBmr(sex, age, w);
+  const tdee = bmr * laf;
   let kcal = tdee;
   if (goal === 'dimagrire') {
     kcal = tdee - Math.min(0.15 * tdee, 500);
@@ -387,11 +502,13 @@ export function computeTargets(profile) {
 
   const hm = h / 100;
   const bmi = w / (hm * hm);
-  const ibw = 25 * hm * hm;
-  const refW = bmi >= 30 ? ibw + 0.4 * (w - ibw) : w;
-  const gPerKg = goal === 'dimagrire' ? 1.4 : goal === 'massa' ? 1.6 : 1.0;
-  let protein = Math.min(gPerKg * refW, 2.0 * w, (0.30 * kcal) / 4);
-  const fat = (0.28 * kcal) / 9;
+  const refW = bmi >= 18.5 && bmi <= 25 ? w : LARN.bmi_ref * hm * hm;
+  const pri = age >= 60 ? LARN.protein_pri_60 : LARN.protein_pri;
+  const factor = goal === 'dimagrire' ? 1.3 : goal === 'massa' ? 1.5 : 1.0;
+  const protein = Math.min(pri * factor * refW, 2.0 * refW, (0.25 * kcal) / 4);
+  const protPct = (protein * 4 * 100) / kcal;
+  const fatPct = clamp(Math.max(LARN.fat_pct_target, 100 - protPct - LARN.carbs_pct[1]), LARN.fat_pct[0], LARN.fat_pct[1]);
+  const fat = (fatPct / 100 * kcal) / 9;
   const carbs = Math.max(0, (kcal - protein * 4 - fat * 9) / 4);
   return {
     bmr: Math.round(bmr),
@@ -400,7 +517,12 @@ export function computeTargets(profile) {
     protein_g: Math.round(protein),
     carbs_g: Math.round(carbs),
     fat_g: Math.round(fat),
+    fiber_g: LARN.fiber_g_min,
+    sugars_max_g: Math.round((LARN.sugars_pct_max / 100 * kcal) / 4),
+    sfa_max_g: Math.round((LARN.sfa_pct_max / 100 * kcal) / 9),
+    laf,
     bmi: r1(bmi),
+    method: 'LARN 2014: MB FAO/WHO/UNU 1985 (Schofield) x LAF',
   };
 }
 
@@ -457,6 +579,11 @@ function isDairyLike(f) { return DAIRY_RE.test(`${f.name_it || ''} ${f.name_en |
 function isDrinkOrDessert(f) { return f.role === 'bevanda_colazione' || isDairyLike(f); }
 function isSoy(f) { return /\bsoia|\bsoy/i.test(`${f.name_it || ''} ${f.name_en || ''}`); }
 
+/** Bread (LARN group "pane", family "pane", or the word pane/bread in the name). */
+function isBread(f) {
+  return f.larn_group === 'pane' || f.family === 'pane' || /^pane\b|\bbread\b/i.test(`${f.name_it || ''}|${f.name_en || ''}`.replace('|', ' '));
+}
+
 function newDayState() { return { keys: new Set(), fruit: 0, drinkDairy: 0, soy: 0 }; }
 function dayKeys(f) { const k = ['f:' + familyOf(f)]; const st = nameStem(f); if (st) k.push('s:' + st); return k; }
 
@@ -468,12 +595,16 @@ function dayKeys(f) { const k = ['f:' + familyOf(f)]; const st = nameStem(f); if
  */
 function fitsDay(f, st, mealFoods, mealOnly = false) {
   if (mealFoods.some((x) => x.id === f.id)) return false;
+  // never two foods of the same LARN group (or two breads) in one meal
+  if (f.larn_group && mealFoods.some((x) => x.larn_group === f.larn_group)) return false;
+  if (isBread(f) && mealFoods.some(isBread)) return false;
   if (f.role === 'frutta' && mealFoods.some((x) => x.role === 'frutta')) return false;
   if (f.role === 'bevanda_colazione' && mealFoods.some((x) => x.role === 'bevanda_colazione')) return false;
   if (isDairyLike(f) && mealFoods.some(isDairyLike)) return false;
   if (f.role === 'condimento') return !mealFoods.some((x) => x.role === 'condimento');
   if (mealOnly) return true;
-  if (dayKeys(f).some((k) => st.keys.has(k))) return false;
+  // bread may come with both lunch and dinner
+  if (!isBread(f) && dayKeys(f).some((k) => st.keys.has(k))) return false;
   if (f.role === 'frutta' && st.fruit >= 3) return false;
   if (isDrinkOrDessert(f) && st.drinkDairy >= 2) return false;
   if (isDrinkOrDessert(f) && isSoy(f) && st.soy >= 1) return false;
@@ -526,13 +657,123 @@ function slotPool(kg, profile, roles, meal, cache) {
 // ---------------------------------------------------------------------------
 
 /** Scaled min/max quotas for the given number of days. */
-function scaledRules(diet, days) {
+function scaledRules(diet, days, larnFreq) {
   const rules = CATEGORY_RULES[diet] || CATEGORY_RULES.onnivoro;
+  const rmin = { ...rules.min }; const rmax = { ...rules.max };
+  if (larnFreq) {
+    // kg.larn weekly frequencies replace the built-in ones: min and max for omnivores,
+    // only the caps (eggs, cheese) for vegetarians, nothing for vegans.
+    for (const [cat, fr] of Object.entries(larnFreq)) {
+      if (diet === 'onnivoro') {
+        if (isNum(fr.min) && cat in rmin) rmin[cat] = fr.min;
+        if (isNum(fr.max) && (cat in rmax || cat === 'carne_bianca')) rmax[cat] = fr.max;
+      } else if (diet === 'vegetariano' && isNum(fr.max) && cat in rmax) rmax[cat] = fr.max;
+    }
+  }
   const f = days / 7;
   const min = {}; const max = {};
-  for (const [k, v] of Object.entries(rules.min)) min[k] = Math.round(v * f);
-  for (const [k, v] of Object.entries(rules.max)) max[k] = Math.max(1, Math.ceil(v * f));
+  for (const [k, v] of Object.entries(rmin)) min[k] = Math.round(v * f);
+  for (const [k, v] of Object.entries(rmax)) max[k] = Math.max(1, Math.ceil(v * f));
   return { min, max, weight: rules.weight };
+}
+
+// ---------------------------------------------------------------------------
+// kg.larn (optional): standard portions and weekly frequencies per LARN/CREA group
+// ---------------------------------------------------------------------------
+
+const normKey = (k) => String(k || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+/** Our protein categories and the LARN/CREA group keys that may describe them. */
+const LARN_CATEGORY_KEYS = {
+  pesce: ['pesce', 'pesce_e_prodotti_della_pesca', 'prodotti_ittici', 'pesce_molluschi_crostacei'],
+  legumi: ['legumi', 'legumi_secchi', 'legumi_freschi'],
+  carne_rossa: ['carne_rossa', 'carni_rosse', 'carne_rossa_fresca'],
+  salumi: ['salumi', 'carni_trasformate', 'carne_trasformata', 'carni_conservate'],
+  carne_bianca: ['carne_bianca', 'carni_bianche', 'pollame'],
+  uova: ['uova', 'uovo'],
+  formaggi: ['formaggi', 'formaggio', 'formaggio_fresco', 'formaggi_stagionati', 'latte_e_derivati_formaggi'],
+};
+
+function larnEntries(kg) {
+  const L = kg && kg.larn;
+  if (!L || typeof L !== 'object') return new Map();
+  let g = L.groups ?? L.gruppi ?? L;
+  const m = new Map();
+  if (Array.isArray(g)) {
+    for (const e of g) if (e && typeof e === 'object') m.set(normKey(e.key ?? e.group ?? e.id ?? e.name), e);
+  } else if (g && typeof g === 'object') {
+    for (const [k, e] of Object.entries(g)) if (e && typeof e === 'object') m.set(normKey(k), e);
+  }
+  return m;
+}
+function larnPortionOfEntry(e) {
+  for (const k of ['portion_g', 'standard_portion_g', 'porzione_g', 'portion_grams', 'grams', 'g']) if (isNum(e[k]) && e[k] > 0) return e[k];
+  if (isNum(e.portion) && e.portion > 0) return e.portion;
+  if (e.portion && typeof e.portion === 'object') return larnPortionOfEntry(e.portion);
+  return null;
+}
+function parseRange(v) {
+  if (isNum(v)) return { min: v, max: v };
+  if (Array.isArray(v) && v.length && v.every(isNum)) return { min: v[0], max: v[v.length - 1] };
+  if (v && typeof v === 'object') {
+    const min = v.min ?? v.min_week ?? v.da; const max = v.max ?? v.max_week ?? v.a;
+    if (isNum(min) || isNum(max)) return { min: isNum(min) ? min : null, max: isNum(max) ? max : null };
+  }
+  if (typeof v === 'string') {
+    const n = v.match(/\d+(?:[.,]\d+)?/g);
+    if (n) { const a = n.map((x) => Number(x.replace(',', '.'))); return { min: a[0], max: a[a.length - 1] }; }
+  }
+  return null;
+}
+function larnWeeklyOfEntry(e) {
+  if (isNum(e.freq_week_min) || isNum(e.freq_week_max)) {
+    return { min: isNum(e.freq_week_min) ? e.freq_week_min : null, max: isNum(e.freq_week_max) ? e.freq_week_max : null };
+  }
+  if (isNum(e.weekly_min) || isNum(e.weekly_max)) return { min: isNum(e.weekly_min) ? e.weekly_min : null, max: isNum(e.weekly_max) ? e.weekly_max : null };
+  for (const k of ['weekly', 'per_week', 'week', 'frequency_week', 'weekly_frequency', 'weekly_portions', 'frequenza_settimanale', 'settimanale']) {
+    if (e[k] !== undefined) { const r = parseRange(e[k]); if (r) return r; }
+  }
+  const fr = e.frequency ?? e.frequenza;
+  if (fr && typeof fr === 'object') {
+    for (const k of ['week', 'weekly', 'settimana', 'settimanale']) if (fr[k] !== undefined) { const r = parseRange(fr[k]); if (r) return r; }
+  }
+  return null;
+}
+
+const LARN_INDEX = new WeakMap();
+/**
+ * Read kg.larn once per kg: fills LARN_PORTION for foods with a larn_group and returns
+ * weekly frequencies per protein category (or null when kg.larn is absent).
+ */
+function indexLarn(kg) {
+  if (!kg || typeof kg !== 'object') return null;
+  if (LARN_INDEX.has(kg)) return LARN_INDEX.get(kg);
+  const entries = larnEntries(kg);
+  let freq = null;
+  if (entries.size) {
+    for (const f of kg.foods || []) {
+      if (!f || !f.larn_group) continue;
+      const e = entries.get(normKey(f.larn_group));
+      const p = e && larnPortionOfEntry(e);
+      // snap only when the group portion uses the same weight basis and the grams are net
+      const basisOk = !e || !e.basis || e.basis === 'any' || e.basis === basisOf(f);
+      if (p && basisOk && edibleFraction(f) === 1) LARN_PORTION.set(f, p);
+    }
+    // Frequencies are shared by "freq_group" (CREA 2018 groups); fall back to the group key.
+    const byFreqGroup = new Map();
+    for (const [k, e] of entries) {
+      const fg = normKey(e.freq_group || k);
+      if (!byFreqGroup.has(fg)) { const r = larnWeeklyOfEntry(e); if (r) byFreqGroup.set(fg, r); }
+      if (!byFreqGroup.has(k)) { const r = larnWeeklyOfEntry(e); if (r) byFreqGroup.set(k, r); }
+    }
+    for (const [cat, keys] of Object.entries(LARN_CATEGORY_KEYS)) {
+      for (const k of keys) {
+        const r = byFreqGroup.get(k);
+        if (r) { freq = freq || {}; freq[cat] = r; break; }
+      }
+    }
+  }
+  LARN_INDEX.set(kg, freq);
+  return freq;
 }
 
 function countOf(counts, cat) {
@@ -551,8 +792,8 @@ function underMax(counts, max, cat) {
  * Build the sequence of protein categories for all "proteina" slots
  * (index 2*day for pranzo, 2*day+1 for cena).
  */
-function buildCategorySchedule(rng, diet, days, available, warnings) {
-  const { min, max, weight } = scaledRules(diet, days);
+function buildCategorySchedule(rng, diet, days, available, warnings, larnFreq) {
+  const { min, max, weight } = scaledRules(diet, days, larnFreq);
   const n = days * 2;
   const seq = [];
   const counts = {};
@@ -600,6 +841,7 @@ function buildCategorySchedule(rng, diet, days, available, warnings) {
 
 /**
  * Choose a food for a slot with weighted randomness.
+ * High priority foods come first (priority band, then weight (priority + 1)^2).
  * Rules, relaxed in this order if they empty the pool: weekly cap per family, not the
  * same family as the previous day in the same slot (condimento excepted), the day rules
  * of fitsDay (dropped only for template slots as a last resort; per-meal rules always hold).
@@ -618,15 +860,22 @@ function pickFood(rng, pool, ctx) {
   const prevFood = ctx.prevFood;
   const subs = new Set(prevFood ? prevFood.substitutes || [] : []);
 
-  const tiers = [
-    (f) => familyOf(f) !== prevId && okDay(f) && (cap == null || uses(f) < cap),
-    (f) => familyOf(f) !== prevId && okDay(f),
-    (f) => okDay(f),
-  ];
-  if (!strict) tiers.push(okMeal);
+  // Priority band: the most common foods of the pool (priority within 2 of the best).
+  const maxP = pool.reduce((m, f) => Math.max(m, priorityOf(f)), 0);
+  // drinks and fats: only the best priority (partially skimmed milk, extra virgin olive
+  // oil) unless excluded; variety-driven roles use a window of 2 points
+  const exact = pool.length && ['bevanda_colazione', 'condimento'].includes(pool[0].role);
+  const top = pool.filter((f) => (exact ? priorityOf(f) === maxP : priorityOf(f) >= maxP - 2));
+  const t1 = (f) => familyOf(f) !== prevId && okDay(f) && (cap == null || uses(f) < cap);
+  const t2 = (f) => familyOf(f) !== prevId && okDay(f);
+  const t3 = (f) => okDay(f);
+  const steps = exact
+    ? [[top, t1], [top, t2], [top, t3], [pool, t1], [pool, t3]]
+    : [[top, t1], [pool, t1], [top, t2], [pool, t2], [top, t3], [pool, t3]];
+  if (!strict) steps.push([top, okMeal], [pool, okMeal]);
   let cands = [];
-  for (const t of tiers) {
-    cands = pool.filter(t);
+  for (const [band, t] of steps) {
+    cands = band.filter(t);
     if (cands.length) break;
   }
   if (!cands.length) return null;
@@ -637,6 +886,7 @@ function pickFood(rng, pool, ctx) {
     if (pairIds.has(f.id) || (f.pairs_with || []).some((id) => mealIds.has(id))) w *= 2.5;
     if (subs.has(f.id)) w *= 1.5;
     if (f.common === true) w *= 1.5;
+    w *= (priorityOf(f) + 1) ** 2;
     return { v: f, w };
   });
   return weightedPick(rng, entries);
@@ -659,7 +909,7 @@ const sumProt = (items) => items.reduce((s, it) => s + itemProt(it), 0);
  * Returns the remaining delta.
  */
 function shiftKcal(items, delta, tol = 8) {
-  const adj = items.filter((it) => kcal100(it.food) > 0);
+  const adj = items.filter((it) => kcal100(it.food) > 0 && it.food.role !== 'contorno');
   if (!adj.length) return delta;
   for (let iter = 0; iter < 4 && Math.abs(delta) > tol; iter++) {
     const dir = Math.sign(delta);
@@ -673,7 +923,7 @@ function shiftKcal(items, delta, tol = 8) {
     for (let i = 0; i < adj.length; i++) {
       const it = adj[i]; const b = bounds(it.food);
       const before = itemKcal(it);
-      it.grams = roundGrams(it.grams + dir * frac * rooms[i], b.min, b.max);
+      it.grams = roundFood(it.food, it.grams + dir * frac * rooms[i]);
       delta -= itemKcal(it) - before;
     }
   }
@@ -681,8 +931,9 @@ function shiftKcal(items, delta, tol = 8) {
     let best = null; let bestAbs = Math.abs(delta);
     for (const it of adj) {
       const b = bounds(it.food);
-      for (const d of [5, -5]) {
-        const g = roundGrams(it.grams + d, b.min, b.max);
+      const st = stepOf(it.food);
+      for (const d of [st, -st]) {
+        const g = roundFood(it.food, it.grams + d);
         if (g === it.grams) continue;
         const nd = delta - ((g - it.grams) * kcal100(it.food)) / 100;
         if (Math.abs(nd) < bestAbs - 0.5) { bestAbs = Math.abs(nd); best = { it, g, nd }; }
@@ -699,7 +950,7 @@ const TIERS_UP = [
   ['base_principale', 'base_colazione'],
   ['snack'],
   ['bevanda_colazione'],
-  ['secondo', 'contorno'],
+  ['secondo'],
   ['frutta'],
   ['condimento'],
 ];
@@ -707,8 +958,10 @@ const TIERS_UP = [
 const TIERS_DOWN = [
   ['base_principale', 'base_colazione'],
   ['condimento', 'snack', 'frutta', 'bevanda_colazione'],
-  ['secondo', 'contorno'],
+  ['secondo'],
 ];
+// Vegetables (contorno) stay at their LARN portion (typical_g): they are never resized to
+// fill or trim kcal.
 
 /** Shift kcal through role tiers, keeping every portion inside its bounds. */
 function shiftByTiers(items, delta, exclude) {
@@ -721,6 +974,7 @@ function shiftByTiers(items, delta, exclude) {
 
 /** At least 20% of the food's kcal from protein (legumes, meat, fish, eggs, dairy, tofu). */
 function isProteinDense(food) {
+  if (food.role === 'contorno') return false;   // vegetables stay at their LARN portion
   return kcal100(food) > 0 && (prot100(food) * 4) / kcal100(food) >= 0.20;
 }
 
@@ -734,7 +988,7 @@ function fixProtein(items, targetP) {
     let best = null; let bestRatio = -1;
     for (const it of dense) {
       const b = bounds(it.food);
-      const g = roundGrams(it.grams + (up ? 5 : -5), b.min, b.max);
+      const g = roundFood(it.food, it.grams + (up ? 1 : -1) * stepOf(it.food));
       if (g === it.grams) continue;
       const ratio = prot100(it.food) / kcal100(it.food);
       if (ratio > bestRatio) { bestRatio = ratio; best = { it, g }; }
@@ -764,7 +1018,7 @@ function fixFat(items, targetF) {
     let best = null; let bestShare = -1;
     for (const it of fatty) {
       const b = bounds(it.food);
-      const g = roundGrams(it.grams + (down ? -5 : 5), b.min, b.max);
+      const g = roundFood(it.food, it.grams + (down ? -1 : 1) * stepOf(it.food));
       if (g === it.grams) continue;
       // raising fat: only true fats (condimento); lowering: anything fatty
       if (!down && it.food.role !== 'condimento') continue;
@@ -778,6 +1032,57 @@ function fixFat(items, targetF) {
   return fatty;
 }
 
+const STARCH_ROLES = ['base_principale', 'base_colazione'];
+const sumCarbs = (items) => items.reduce((s, it) => s + (nutr(it.food, 'carbs') * it.grams) / 100, 0);
+
+/**
+ * LARN carbohydrates 45-60% En: when the day is below ~48% En, move energy from
+ * non-starch items (fats, snacks, protein foods, drinks) to starches, within bounds.
+ */
+function fixCarbs(items, targets) {
+  for (let iter = 0; iter < 3; iter++) {
+    const kcal = sumKcal(items) || 1;
+    const pct = (sumCarbs(items) * 4 * 100) / kcal;
+    if (pct >= 48) return;
+    const need = ((50 - pct) / 100) * kcal;           // kcal to move into starches
+    const starch = items.filter((it) => STARCH_ROLES.includes(it.food.role));
+    const before = sumKcal(starch);
+    shiftKcal(starch, need);
+    const added = sumKcal(starch) - before;
+    if (added < 10) return;
+    const others = items.filter((it) => !STARCH_ROLES.includes(it.food.role) && it.food.role !== 'contorno');
+    // remove from fats and snacks first, then protein foods, then drinks and fruit
+    let rest = -added;
+    for (const roles of [['condimento', 'snack'], ['secondo'], ['bevanda_colazione', 'frutta']]) {
+      if (Math.abs(rest) <= 8) break;
+      rest = shiftKcal(others.filter((it) => roles.includes(it.food.role)), rest);
+    }
+    if (Math.abs(rest) > 8) shiftKcal(starch, rest);  // could not compensate: give it back
+  }
+}
+
+const sumSugars = (items) => items.reduce((s, it) => s + (nutr(it.food, 'sugars') * it.grams) / 100, 0);
+/** More than 40% of the food's kcal from sugars (fruit, juices, jams, sweets). */
+const isSweet = (f) => kcal100(f) > 0 && (nutr(f, 'sugars') * 4) / kcal100(f) > 0.4;
+
+/** LARN sugars < 15% En: shrink sweet items toward their minimum, energy goes to starches. */
+function fixSugars(items) {
+  for (let iter = 0; iter < 3; iter++) {
+    const kcal = sumKcal(items) || 1;
+    const pct = (sumSugars(items) * 4 * 100) / kcal;
+    if (pct < 14) return;
+    const sweet = items.filter((it) => isSweet(it.food) && !STARCH_ROLES.includes(it.food.role) && it.food.role !== 'contorno');
+    const cut = ((pct - 13) / 100) * kcal / 0.7;   // sweet items are roughly 70% sugar energy
+    const before = sumKcal(sweet);
+    shiftKcal(sweet, -cut);
+    const removed = before - sumKcal(sweet);
+    if (removed < 10) return;
+    const starch = items.filter((it) => STARCH_ROLES.includes(it.food.role) && !isSweet(it.food));
+    const rest = shiftKcal(starch, removed);
+    if (rest > 8) shiftKcal(items.filter((it) => !isSweet(it.food) && it.food.role !== 'contorno'), rest);
+  }
+}
+
 /**
  * Day correction: meals toward their own target, protein toward target, fat toward
  * target, then the whole day toward the kcal target, keeping every portion inside its
@@ -788,6 +1093,8 @@ function correctDay(meals, targets) {
   const all = meals.flatMap((m) => m.items);
   const dense = fixProtein(all, targets.protein_g);
   const fatty = fixFat(all, targets.fat_g);
+  fixCarbs(all, targets);
+  fixSugars(all);
   const lock = new Set([...dense, ...fatty]);
   let delta = targets.kcal - sumKcal(all);
   delta = shiftByTiers(all, delta, lock);
@@ -802,16 +1109,36 @@ function correctDay(meals, targets) {
 function foodName(food, lang) {
   return lang === 'en' ? (food.name_en || food.name_it) : (food.name_it || food.name_en);
 }
+function displayName(food, lang) {
+  if (lang === 'en') return food.display_name_en || food.name_en || food.display_name_it || food.name_it;
+  return food.display_name_it || food.name_it || food.name_en;
+}
+const basisOf = (f) => (f.weight_basis === 'crudo' || f.weight_basis === 'pronto' ? f.weight_basis : 'pronto');
+/** grams * per100g(edible) * edible_fraction / 100, or null when the KG has no value. */
+function nutrOrNull(f, key, g) {
+  return f.per100g && isNum(f.per100g[key]) ? r1((nutr(f, key) * g) / 100) : null;
+}
 
 /** @returns {PlanItem} */
 function toItem(it, lang) {
-  const f = it.food; const g = it.grams;
+  const f = it.food; const g = Math.round(it.grams);
+  const u = unitOf(f);
+  const sk = sfaKey(f);
   const o = {
-    food_id: f.id, name: foodName(f, lang), role: f.role, slot: it.slot, grams: Math.round(g),
+    food_id: f.id, name: foodName(f, lang), display_name: displayName(f, lang),
+    role: f.role, slot: it.slot,
+    grams: g,                                   // gross, as bought
+    basis: basisOf(f),                          // "crudo" | "pronto"
+    edible_g: Math.round(g * edibleFraction(f)),
+    pieces: u ? Math.round((g / u.grams) * 2) / 2 : null,
+    unit_label: u ? (lang === 'en' ? (u.en || u.it || null) : (u.it || u.en || null)) : null,
     kcal: Math.round((kcal100(f) * g) / 100),
     protein_g: r1((nutr(f, 'protein') * g) / 100),
     carbs_g: r1((nutr(f, 'carbs') * g) / 100),
     fat_g: r1((nutr(f, 'fat') * g) / 100),
+    sugars_g: nutrOrNull(f, 'sugars', g),
+    fiber_g: nutrOrNull(f, 'fiber', g),
+    sfa_g: sk ? r1((nutr(f, sk) * g) / 100) : null,
     household: (f.portion && f.portion.household) || null,
   };
   if (it.category) o.category = it.category;
@@ -819,10 +1146,43 @@ function toItem(it, lang) {
   return o;
 }
 
+/**
+ * Sum totals. sugars_g, fiber_g, sfa_g sum the items that have a value; `_cov` keeps the
+ * share of kcal covered by data so LARN checks run only on well covered days.
+ */
 function totalsOf(list) {
-  const t = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
-  for (const x of list) { t.kcal += x.kcal; t.protein_g += x.protein_g; t.carbs_g += x.carbs_g; t.fat_g += x.fat_g; }
-  return { kcal: Math.round(t.kcal), protein_g: r1(t.protein_g), carbs_g: r1(t.carbs_g), fat_g: r1(t.fat_g) };
+  const t = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, sugars_g: 0, fiber_g: 0, sfa_g: 0 };
+  const cov = { sugars_g: 0, fiber_g: 0, sfa_g: 0 };
+  for (const x of list) {
+    t.kcal += x.kcal; t.protein_g += x.protein_g; t.carbs_g += x.carbs_g; t.fat_g += x.fat_g;
+    for (const k of ['sugars_g', 'fiber_g', 'sfa_g']) {
+      if (x[k] === null || x[k] === undefined) continue;
+      t[k] += x[k];
+      cov[k] += x._cov ? x._cov[k] * x.kcal : x.kcal;
+    }
+  }
+  const out = { kcal: Math.round(t.kcal), protein_g: r1(t.protein_g), carbs_g: r1(t.carbs_g), fat_g: r1(t.fat_g) };
+  for (const k of ['sugars_g', 'fiber_g', 'sfa_g']) out[k] = cov[k] > 0 ? r1(t[k]) : null;
+  Object.defineProperty(out, '_cov', {
+    value: Object.fromEntries(Object.entries(cov).map(([k, v]) => [k, t.kcal > 0 ? v / t.kcal : 0])),
+    enumerable: false,
+  });
+  return out;
+}
+
+/** LARN profile of a day: %En of macros, sugars %En, fiber g, SFA %En (null if data is thin). */
+function larnProfile(totals) {
+  const k = totals.kcal || 1;
+  const cov = totals._cov || {};
+  const ok = (key) => totals[key] !== null && (cov[key] ?? 1) >= 0.8;
+  return {
+    protein_pct: r1((totals.protein_g * 4 * 100) / k),
+    carbs_pct: r1((totals.carbs_g * 4 * 100) / k),
+    fat_pct: r1((totals.fat_g * 9 * 100) / k),
+    sugars_pct: ok('sugars_g') ? r1((totals.sugars_g * 4 * 100) / k) : null,
+    fiber_g: ok('fiber_g') ? totals.fiber_g : null,
+    sfa_pct: ok('sfa_g') ? r1((totals.sfa_g * 9 * 100) / k) : null,
+  };
 }
 
 /** Recompute meal, day and week totals and the shopping list (mutates the given clone). */
@@ -830,12 +1190,17 @@ function finalize(plan) {
   for (const day of plan.days) {
     for (const meal of day.meals) meal.totals = totalsOf(meal.items);
     day.totals = totalsOf(day.meals.map((m) => m.totals));
+    day.larn = larnProfile(day.totals);
   }
   plan.week_totals = totalsOf(plan.days.map((d) => d.totals));
   const agg = new Map();
   for (const day of plan.days) for (const meal of day.meals) for (const it of meal.items) {
-    const e = agg.get(it.food_id) || { food_id: it.food_id, name: it.name, role: it.role, grams: 0 };
+    const e = agg.get(it.food_id) || {
+      food_id: it.food_id, name: it.name, display_name: it.display_name, role: it.role,
+      basis: it.basis, grams: 0, pieces: it.pieces === null ? null : 0, unit_label: it.unit_label,
+    };
     e.grams += it.grams;
+    if (e.pieces !== null && it.pieces !== null) e.pieces += it.pieces;
     agg.set(it.food_id, e);
   }
   plan.shopping_list = [...agg.values()].sort((a, b) =>
@@ -850,13 +1215,31 @@ function dayWarnings(day, targets) {
   if (Math.abs(k - targets.kcal) > targets.kcal * KCAL_TOLERANCE) {
     w.push(`${day.label}: ${k} kcal contro un obiettivo di ${targets.kcal} kcal (oltre il 5%), limiti di porzione raggiunti.`);
   }
-  if (day.totals.fat_g < targets.fat_g * 0.70 || day.totals.fat_g > targets.fat_g * 1.30) {
-    w.push(`${day.label}: grassi ${Math.round(day.totals.fat_g)} g, lontani dall'obiettivo di ${targets.fat_g} g.`);
-  }
   if (day.totals.protein_g < targets.protein_g * PROTEIN_LOW) {
     w.push(`${day.label}: proteine ${Math.round(day.totals.protein_g)} g, sotto l'obiettivo di ${targets.protein_g} g.`);
   }
   return w;
+}
+
+/**
+ * LARN 2014 range checks over the plan, one warning per nutrient listing the days out of
+ * range. All start with "LARN:" so swapItem can recompute them.
+ */
+function larnWarnings(plan) {
+  const checks = [
+    ['carbs_pct', (v) => v < LARN.carbs_pct[0] || v > LARN.carbs_pct[1], 'carboidrati fuori dal 45-60% dell\'energia', (v) => `${v}%`],
+    ['fat_pct', (v) => v < LARN.fat_pct[0] || v > LARN.fat_pct[1], 'grassi fuori dal 20-35% dell\'energia', (v) => `${v}%`],
+    ['sugars_pct', (v) => v >= LARN.sugars_pct_max, 'zuccheri oltre il 15% dell\'energia', (v) => `${v}%`],
+    ['fiber_g', (v) => v < LARN.fiber_g_min, 'fibra sotto 25 g', (v) => `${Math.round(v)} g`],
+    ['sfa_pct', (v) => v >= LARN.sfa_pct_max, 'grassi saturi oltre il 10% dell\'energia', (v) => `${v}%`],
+  ];
+  const out = [];
+  for (const [key, bad, text, fmt] of checks) {
+    const days = plan.days.filter((d) => d.larn && d.larn[key] !== null && bad(d.larn[key]));
+    if (!days.length) continue;
+    out.push(`LARN: ${text} in ${days.length} ${days.length === 1 ? 'giorno' : 'giorni'} (${days.map((d) => `${d.label} ${fmt(d.larn[key])}`).join(', ')}).`);
+  }
+  return out;
 }
 
 function dedupe(arr) { return [...new Set(arr)]; }
@@ -897,7 +1280,8 @@ export function generatePlan(profile, kg, opts = {}) {
   // Protein category schedule from what is actually available for pranzo/cena.
   const protPools = { pranzo: pool(['secondo'], 'pranzo'), cena: pool(['secondo'], 'cena') };
   const available = new Set([...protPools.pranzo, ...protPools.cena].map(proteinCategory));
-  const schedule = buildCategorySchedule(rng, profile.diet, days, available, warnings);
+  const larnFreq = indexLarn(kg);
+  const schedule = buildCategorySchedule(rng, profile.diet, days, available, warnings, larnFreq);
 
   const weekUses = new Map();
   const use = (f) => weekUses.set(familyOf(f), (weekUses.get(familyOf(f)) || 0) + 1);
@@ -928,9 +1312,13 @@ export function generatePlan(profile, kg, opts = {}) {
         if (meal === 'spuntino' && !cands.length) cands = pool(['frutta', 'snack'], meal);
         if (s.slot === 'condimento') {
           // Extra virgin olive oil most of the time, other fats otherwise.
+          // With priorities in the KG the top-priority fat wins (pickFood); without them,
+          // extra virgin olive oil 75% of the time.
           const olive = cands.filter(isOliveOil);
-          if (olive.length && (olive.length === cands.length || rng() < 0.75)) cands = olive;
-          else if (olive.length) cands = cands.filter((f) => !isOliveOil(f));
+          if (!cands.some((f) => isNum(f.priority))) {
+            if (olive.length && (olive.length === cands.length || rng() < 0.75)) cands = olive;
+            else if (olive.length) cands = cands.filter((f) => !isOliveOil(f));
+          }
         }
         let category;
         if (s.slot === 'proteina') {
@@ -949,7 +1337,8 @@ export function generatePlan(profile, kg, opts = {}) {
         const cap = capBase == null ? null : Math.max(1, Math.ceil((capBase * days) / 7));
         const mealFoods = items.map((x) => x.food);
         let food = pickFood(rng, cands, {
-          meal, prevId: role === 'condimento' || !prev ? null : familyOf(prev), prevFood: prev,
+          // condimento and breakfast drink may repeat daily (olive oil, milk every morning)
+          meal, prevId: role === 'condimento' || role === 'bevanda_colazione' || !prev ? null : familyOf(prev), prevFood: prev,
           day, weekUses, cap: s.slot === 'proteina' ? Math.max(cap ?? 2, 2) : cap, mealFoods,
         });
         if (!food && s.slot === 'proteina') {
@@ -961,7 +1350,7 @@ export function generatePlan(profile, kg, opts = {}) {
         commitDay(food, day);
         use(food);
         /** @type {WItem} */
-        const it = { food, slot: s.slot, grams: sizeFor(food, target * s.share) };
+        const it = { food, slot: s.slot, grams: role === 'contorno' ? roundFood(food, bounds(food).typ) : sizeFor(food, target * s.share) };
         if (food.role === 'secondo') it.category = proteinCategory(food);
         items.push(it);
       }
@@ -976,6 +1365,7 @@ export function generatePlan(profile, kg, opts = {}) {
       const dense = r.warning ? [] : r.foods.filter(isProteinDense);
       if (!dense.length) continue;
       const m = wMeals.find((x) => x.type === meal);
+      if (m.items.length >= MAX_ITEMS[meal]) continue;
       const food = pickFood(rng, dense, {
         meal, prevId: null, prevFood: null, day, weekUses, cap: null, strict: true,
         mealFoods: m.items.map((x) => x.food),
@@ -983,7 +1373,7 @@ export function generatePlan(profile, kg, opts = {}) {
       if (!food) continue;
       const snapshot = wMeals.map((x) => x.items.map((it) => it.grams));
       const b = bounds(food);
-      const extra = { food, slot: 'extra', grams: roundGrams(b.typ, b.min, b.max) };
+      const extra = { food, slot: 'extra', grams: roundFood(food, b.typ) };
       m.items.push(extra);
       fixProtein(all.concat(extra), targets.protein_g);
       const items = wMeals.flatMap((x) => x.items);
@@ -1002,20 +1392,32 @@ export function generatePlan(profile, kg, opts = {}) {
       // Fat check, then kcal again with fatty items locked.
       const all = wMeals.flatMap((m) => m.items);
       const fatty = fixFat(all, targets.fat_g);
-      shiftByTiers(all, targets.kcal - sumKcal(all), new Set(fatty));
+      fixCarbs(all, targets);
+      fixSugars(all);
+      shiftByTiers(all, targets.kcal - sumKcal(all), new Set([...fatty, ...all.filter((x) => isSweet(x.food))]));
     }
     // High targets: add a snack or bread when portion bounds are not enough (never fruit).
-    for (const [meal, role] of EXTRA_SLOTS) {
+    for (const [meal, role] of [...EXTRA_SLOTS, ...EXTRA_SLOTS]) {
       const all = wMeals.flatMap((m) => m.items);
       const delta = targets.kcal - sumKcal(all);
       if (delta <= targets.kcal * 0.03) break;
       const r = slotPool(kg, profile, [role], meal, cache);
       if (r.warning || !r.foods.length) continue;
       const m = wMeals.find((x) => x.type === meal);
+      if (m.items.length >= MAX_ITEMS[meal]) continue;
       let extraPool = r.foods;
       if (role === 'base_principale') {
-        const bread = extraPool.filter((f) => /bread|\bpane\b/i.test(`${f.name_en || ''} ${f.name_it || ''} ${f.subgroup || ''}`));
-        if (bread.length) extraPool = bread;
+        // bread first; a meal that already has bread gets its bread raised by the kcal
+        // shift and, if still short, a second starch of another LARN group (potatoes, rice)
+        const hasBread = m.items.some((x) => isBread(x.food));
+        const bread = extraPool.filter(isBread);
+        if (hasBread) extraPool = extraPool.filter((f) => !isBread(f));
+        else if (bread.length) extraPool = bread;
+      } else if (role === 'snack') {
+        // neither fatty (nuts) nor sweet (dried fruit, sweets): crackers, grissini, yogurt
+        const plain = extraPool.filter((f) => !isFatty(f) && !isSweet(f));
+        const notSweet = extraPool.filter((f) => !isSweet(f));
+        extraPool = plain.length ? plain : notSweet.length ? notSweet : extraPool;
       }
       const capBase = WEEKLY_CAP_BY_ROLE[role];
       const food = pickFood(rng, extraPool, {
@@ -1056,6 +1458,7 @@ export function generatePlan(profile, kg, opts = {}) {
     warnings: [],
   });
   for (const day of plan.days) warnings.push(...dayWarnings(day, targets));
+  warnings.push(...larnWarnings(plan));
   plan.warnings = dedupe(warnings);
   return plan;
 }
@@ -1097,6 +1500,7 @@ export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
   const current = byId.get(item.food_id);
   const lang = (out.meta && out.meta.lang) || (profile.lang === 'en' ? 'en' : 'it');
   const targets = out.targets || computeTargets(profile);
+  indexLarn(kg); // standard portions for sizeFor
 
   let { foods: pool } = slotPool(kg, profile, [item.role], meal.type, null);
   if (item.role === 'condimento' && (meal.type === 'pranzo' || meal.type === 'cena')) {
@@ -1121,7 +1525,7 @@ export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
 
   // Protein quotas: keep red meat cap and required minimums.
   if (item.role === 'secondo' && cands.length) {
-    const { min, max } = scaledRules(profile.diet, out.days.length);
+    const { min, max } = scaledRules(profile.diet, out.days.length, indexLarn(kg));
     const counts = {};
     out.days.forEach((dd, di) => dd.meals.forEach((mm, mi) => mm.items.forEach((x, xi) => {
       if (x.role !== 'secondo' || (di === dayIndex && mi === mealIndex && xi === itemIndex)) return;
@@ -1154,7 +1558,7 @@ export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
   const next = cands[0];
 
   /** @type {WItem} */
-  const w = { food: next, slot: item.slot, grams: sizeFor(next, item.kcal), swap_history: history };
+  const w = { food: next, slot: item.slot, grams: next.role === 'contorno' ? roundFood(next, bounds(next).typ) : sizeFor(next, item.kcal), swap_history: history };
   if (next.role === 'secondo') w.category = proteinCategory(next);
   meal.items[itemIndex] = toItem(w, lang);
 
@@ -1175,6 +1579,9 @@ export function swapItem(plan, kg, dayIndex, mealIndex, itemIndex, profile) {
 
   finalize(out);
   const label = day.label;
-  out.warnings = dedupe([...(out.warnings || []).filter((s) => !s.startsWith(`${label}: `)), ...dayWarnings(day, targets)]);
+  out.warnings = dedupe([
+    ...(out.warnings || []).filter((s) => !s.startsWith(`${label}: `) && !s.startsWith('LARN:')),
+    ...dayWarnings(day, targets), ...larnWarnings(out),
+  ]);
   return out;
 }

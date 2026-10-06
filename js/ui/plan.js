@@ -1,5 +1,6 @@
 // Plan rendering: targets, day tabs, meals, macro bars, warnings, shopping list.
 import { h, fmt } from './dom.js';
+import { unitLabel } from './i18n.js';
 
 const MACRO_KCAL = { protein_g: 4, carbs_g: 4, fat_g: 9 };
 
@@ -12,6 +13,91 @@ function gramsText(g, lang) {
   if (g === null || g === undefined) return '-';
   if (g >= 1000) return `${fmt(g / 1000, 2, lang)} kg`;
   return `${fmt(g, 0, lang)} g`;
+}
+
+const num = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+
+function itemName(item) {
+  return item.display_name || item.name || '';
+}
+
+// v2 items: pieces + unit_label, basis crudo|pronto. Falls back to grams + household.
+function quantityCell(item, t, lang) {
+  const grams = num(item.grams);
+  const pieces = num(item.pieces);
+  if (pieces && pieces > 0 && item.unit_label) {
+    return [
+      `${fmt(pieces, 1, lang)} ${unitLabel(item.unit_label, pieces, lang)}`,
+      grams !== null ? h('span', { class: 'household' }, t.approx_g(fmt(grams, 0, lang))) : null,
+    ];
+  }
+  const hh = householdText(item.household);
+  const out = [gramsText(grams, lang)];
+  if (item.basis === 'crudo') out.push(' ', h('span', { class: 'tag', title: t.raw_weight }, t.raw_tag));
+  if (hh) out.push(h('span', { class: 'household' }, hh));
+  return out;
+}
+
+// Aggregates the shopping list. Prefers the engine list when it carries v2 fields,
+// otherwise rebuilds it from the plan items (gross grams and pieces).
+function shoppingItems(plan) {
+  const engineList = Array.isArray(plan.shopping_list) ? plan.shopping_list : [];
+  const engineV2 = engineList.some((it) => 'display_name' in it || 'pieces' in it);
+  if (engineV2 || !(plan.days || []).length) {
+    const list = engineList.map((it) => ({ name: itemName(it), full: it.name, grams: num(it.grams), pieces: num(it.pieces), unit_label: it.unit_label_plural || it.unit_label || null }));
+    list.ordered = true;
+    return list;
+  }
+  const agg = new Map();
+  for (const day of plan.days || []) {
+    for (const meal of day.meals || []) {
+      for (const it of meal.items || []) {
+        const key = it.food_id ?? itemName(it);
+        const cur = agg.get(key) || { name: itemName(it), full: it.name, grams: 0, pieces: 0, unit_label: null, allPieces: true };
+        cur.grams += num(it.grams) || 0;
+        if (num(it.pieces) && it.unit_label) {
+          cur.pieces += it.pieces;
+          if (it.pieces > 1 || !cur.unit_label) cur.unit_label = it.unit_label;
+        } else cur.allPieces = false;
+        agg.set(key, cur);
+      }
+    }
+  }
+  return [...agg.values()].map((c) => ({ ...c, pieces: c.allPieces && c.pieces > 0 ? c.pieces : null }));
+}
+
+const RANGE_LABELS = { protein: 'protein', protein_g: 'protein', protein_pct: 'protein', carbs: 'carbs', carbs_g: 'carbs', carbs_pct: 'carbs', fat: 'fat', fat_g: 'fat', fat_pct: 'fat', kcal: 'kcal' };
+
+function rangeList(ranges, t, lang) {
+  if (!ranges || typeof ranges !== 'object') return null;
+  const rows = [];
+  for (const [key, val] of Object.entries(ranges)) {
+    let lo = null;
+    let hi = null;
+    let unit = /pct|percent|_en$|%/.test(key) ? '%' : /_g$/.test(key) ? 'g' : '';
+    if (Array.isArray(val)) [lo, hi] = val;
+    else if (val && typeof val === 'object') {
+      lo = val.min ?? val.lo ?? val.low ?? null;
+      hi = val.max ?? val.hi ?? val.high ?? null;
+      if (val.unit) unit = String(val.unit);
+    } else continue;
+    if (num(lo) === null && num(hi) === null) continue;
+    const base = RANGE_LABELS[key] || key.replace(/_(g|pct|percent|en)$/, '');
+    const label = t[base] || base.replace(/_/g, ' ');
+    const scale = unit === '%' && num(hi) !== null && hi <= 1 ? 100 : 1;
+    const span = num(lo) !== null && num(hi) !== null ? `${fmt(lo * scale, 1, lang)}-${fmt(hi * scale, 1, lang)}` : fmt((num(lo) ?? hi) * scale, 1, lang);
+    rows.push(h('li', {}, `${label}: ${span}${unit === '%' ? '%' : unit ? ` ${unit}` : ''}`));
+  }
+  return rows.length ? h('div', { class: 'ranges' }, h('p', { class: 'ranges-title' }, t.ranges_title), h('ul', {}, rows)) : null;
+}
+
+function larnLimits(targets, t, lang) {
+  const parts = [];
+  if (num(targets?.fiber_g) !== null) parts.push(t.fiber_min(fmt(targets.fiber_g, 0, lang)));
+  if (num(targets?.sugars_max_g) !== null) parts.push(t.sugars_max(fmt(targets.sugars_max_g, 0, lang)));
+  if (num(targets?.sfa_max_g) !== null) parts.push(t.sfa_max(fmt(targets.sfa_max_g, 0, lang)));
+  if (!parts.length) return null;
+  return h('div', { class: 'ranges' }, h('p', { class: 'ranges-title' }, t.limits_title), h('ul', {}, parts.map((p) => h('li', {}, p))));
 }
 
 function targetsSummary(targets, t, lang) {
@@ -29,6 +115,9 @@ function targetsSummary(targets, t, lang) {
       tile(t.carbs, targets?.carbs_g, 'g', 'k-carbs'),
       tile(t.fat, targets?.fat_g, 'g', 'k-fat'),
     ),
+    rangeList(targets?.ranges, t, lang),
+    larnLimits(targets, t, lang),
+    targets?.method ? h('p', { class: 'muted method-line' }, `${t.method}: ${typeof targets.method === 'string' ? targets.method : targets.method.label || JSON.stringify(targets.method)}`) : null,
   );
 }
 
@@ -76,12 +165,13 @@ function macroBar(totals, targets, t, lang) {
 function mealCard(meal, dayIndex, mealIndex, t, lang, onSwap) {
   const title = t.meal_names[meal.type] || meal.type;
   const rows = (meal.items || []).map((item, itemIndex) => {
-    const hh = householdText(item.household);
+    const name = itemName(item);
+    const full = item.name && item.name !== name ? item.name : null;
     return h(
       'tr',
       {},
-      h('th', { scope: 'row', class: 'item-name' }, item.name),
-      h('td', { class: 'num' }, gramsText(item.grams, lang), hh ? h('span', { class: 'household' }, hh) : null),
+      h('th', { scope: 'row', class: 'item-name', title: full }, name, full ? h('span', { class: 'full-name' }, full) : null),
+      h('td', { class: 'num' }, quantityCell(item, t, lang)),
       h('td', { class: 'num' }, fmt(item.kcal, 0, lang)),
       h(
         'td',
@@ -91,12 +181,12 @@ function mealCard(meal, dayIndex, mealIndex, t, lang, onSwap) {
           {
             type: 'button',
             class: 'btn btn-small',
-            'aria-label': t.swap_label(item.name),
+            'aria-label': t.swap_label(name),
             dataset: { swap: `${dayIndex}:${mealIndex}:${itemIndex}` },
             onclick: () => onSwap(dayIndex, mealIndex, itemIndex),
           },
-          h('span', { 'aria-hidden': 'true', class: 'swap-icon' }, '⇄ '),
-          t.swap,
+          h('span', { 'aria-hidden': 'true', class: 'swap-icon' }, '⇄'),
+          h('span', { class: 'swap-text' }, ` ${t.swap}`),
         ),
       ),
     );
@@ -136,7 +226,8 @@ function mealCard(meal, dayIndex, mealIndex, t, lang, onSwap) {
 function macroShort(totals, t, lang) {
   if (!totals) return '';
   const f = lang === 'en' ? 'F' : 'G';
-  return `P ${fmt(totals.protein_g, 0, lang)} g · C ${fmt(totals.carbs_g, 0, lang)} g · ${f} ${fmt(totals.fat_g, 0, lang)} g`;
+  const nb = (x) => x.replace(/ /g, '\u00a0'); // keep "C 24 g" on one line
+  return `${nb(`P ${fmt(totals.protein_g, 0, lang)} g`)} · ${nb(`C ${fmt(totals.carbs_g, 0, lang)} g`)} · ${nb(`${f} ${fmt(totals.fat_g, 0, lang)} g`)}`;
 }
 
 function dayPanel(day, d, plan, t, lang, onSwap, active) {
@@ -189,16 +280,22 @@ function dayTabs(plan, activeDay, t, onDayChange) {
 }
 
 function shoppingList(plan, t, lang) {
-  const items = [...(plan.shopping_list || [])].sort((a, b) => String(a.name).localeCompare(String(b.name), lang));
+  // The engine list is already ordered by food role (aisle-like); keep that order when present.
+  const items = shoppingItems(plan);
+  if (!items.ordered) items.sort((a, b) => String(a.name).localeCompare(String(b.name), lang));
+  const qty = (it) =>
+    it.pieces
+      ? `${fmt(it.pieces, 1, lang)}${it.unit_label ? ` ${unitLabel(it.unit_label, it.pieces, lang)}` : ''}${it.grams ? ` (${t.approx_g(fmt(it.grams, 0, lang))})` : ''}`
+      : gramsText(it.grams, lang);
   return h(
     'section',
     { class: 'shopping', 'aria-labelledby': 'shopping-title' },
     h('h3', { id: 'shopping-title' }, t.tab_shopping),
-    h('p', { class: 'muted' }, t.shopping_total((plan.days || []).length)),
+    h('p', { class: 'muted' }, t.shopping_total((plan.days || []).length), ' ', t.shopping_gross),
     h(
       'ul',
       { class: 'shopping-list' },
-      items.map((it) => h('li', {}, h('span', { class: 'shop-name' }, it.name), h('span', { class: 'shop-qty' }, gramsText(it.grams, lang)))),
+      items.map((it) => h('li', {}, h('span', { class: 'shop-name', title: it.full && it.full !== it.name ? it.full : null }, it.name), h('span', { class: 'shop-qty' }, qty(it)))),
     ),
   );
 }
@@ -246,6 +343,7 @@ export function renderPlan({ plan, t, lang, activeDay, view, onSwap, onDayChange
       { class: `view view-menu ${view === 'menu' ? '' : 'screen-hidden'}` },
       dayTabs(plan, activeDay, t, onDayChange),
       (plan.days || []).map((day, d) => dayPanel(day, d, plan, t, lang, onSwap, d === activeDay)),
+      h('p', { class: 'muted basis-note' }, t.basis_note),
     ),
     h('div', { class: `view view-shopping ${view === 'shopping' ? '' : 'screen-hidden'}` }, shoppingList(plan, t, lang)),
   );

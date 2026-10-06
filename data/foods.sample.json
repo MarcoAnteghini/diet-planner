@@ -1,6 +1,6 @@
 {
  "version": "1.0.0",
- "generated_at": "2026-10-06T08:04:28Z",
+ "generated_at": "2026-10-06T08:47:21Z",
  "sources": [
   "CIQUAL 2020 (ANSES)",
   "YouMeals DB"
@@ -43,11 +43,369 @@
   "lupini",
   "molluschi"
  ],
+ "weight_bases": [
+  "crudo",
+  "pronto"
+ ],
+ "larn": {
+  "source": "Porzioni: SINU LARN IV revisione 2014, Standard quantitativi delle porzioni, Tabella 1 (https://sinu.it/wp-content/uploads/2019/07/20141111_LARN_Porzioni.pdf). Frequenze: CREA Linee guida per una sana alimentazione 2018, Tabella 9.1, adulti (https://www.crea.gov.it/documents/59764/0/LINEE-GUIDA+DEFINITIVO.pdf). Frequenze riferite a 2000 kcal/die; min e max da 1500 e 2500 kcal/die.",
+  "kcal_levels": [
+   1500,
+   2000,
+   2500
+  ],
+  "reference_kcal": 2000,
+  "groups": {
+   "cereali": {
+    "portion_g": 80,
+    "basis": "crudo",
+    "label": "pasta, riso, mais, farro, orzo",
+    "freq_group": "cereali",
+    "freq_day": 1.5,
+    "freq_day_min": 1,
+    "freq_day_max": 1.5,
+    "freq_week": 10.5,
+    "freq_week_min": 7,
+    "freq_week_max": 10.5
+   },
+   "pane": {
+    "portion_g": 50,
+    "basis": "pronto",
+    "label": "pane",
+    "freq_group": "pane",
+    "freq_day": 3.5,
+    "freq_day_min": 2.5,
+    "freq_day_max": 4.5,
+    "freq_week": 24.5,
+    "freq_week_min": 17.5,
+    "freq_week_max": 31.5
+   },
+   "sostituti_pane": {
+    "portion_g": 30,
+    "basis": "pronto",
+    "label": "fette biscottate, cracker, grissini, friselle",
+    "freq_group": "sostituti_pane",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 1,
+    "freq_week_min": 1,
+    "freq_week_max": 1
+   },
+   "dolci_forno": {
+    "portion_g": 30,
+    "basis": "pronto",
+    "label": "biscotti (30 g); brioche, cornetto, ciambellone, crostata 50 g",
+    "freq_group": "dolci_forno",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 2,
+    "freq_week_min": 0.5,
+    "freq_week_max": 2
+   },
+   "cereali_colazione": {
+    "portion_g": 30,
+    "basis": "pronto",
+    "label": "cereali per la prima colazione",
+    "freq_group": "cereali_colazione",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 2,
+    "freq_week_min": 0.5,
+    "freq_week_max": 3
+   },
+   "patate": {
+    "portion_g": 200,
+    "basis": "crudo",
+    "label": "patate (gnocchi di patate 150 g)",
+    "freq_group": "patate",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 2,
+    "freq_week_min": 1,
+    "freq_week_max": 2
+   },
+   "frutta": {
+    "portion_g": 150,
+    "basis": "crudo",
+    "label": "frutta fresca, netto scarti",
+    "freq_group": "frutta",
+    "freq_day": 3,
+    "freq_day_min": 2,
+    "freq_day_max": 3,
+    "freq_week": 21,
+    "freq_week_min": 14,
+    "freq_week_max": 21
+   },
+   "frutta_essiccata": {
+    "portion_g": 30,
+    "basis": "pronto",
+    "label": "frutta secca zuccherina (uvetta, prugne secche)",
+    "freq_group": "frutta",
+    "freq_day": 3,
+    "freq_day_min": 2,
+    "freq_day_max": 3,
+    "freq_week": 21,
+    "freq_week_min": 14,
+    "freq_week_max": 21
+   },
+   "verdura": {
+    "portion_g": 200,
+    "basis": "crudo",
+    "label": "verdure e ortaggi, crudi o cotti",
+    "freq_group": "verdura",
+    "freq_day": 2.5,
+    "freq_day_min": 2.5,
+    "freq_day_max": 3,
+    "freq_week": 17.5,
+    "freq_week_min": 17.5,
+    "freq_week_max": 21
+   },
+   "insalata": {
+    "portion_g": 80,
+    "basis": "crudo",
+    "label": "insalate a foglia",
+    "freq_group": "verdura",
+    "freq_day": 2.5,
+    "freq_day_min": 2.5,
+    "freq_day_max": 3,
+    "freq_week": 17.5,
+    "freq_week_min": 17.5,
+    "freq_week_max": 21
+   },
+   "carne_rossa": {
+    "portion_g": 100,
+    "basis": "crudo",
+    "label": "carne rossa fresca",
+    "freq_group": "carne_rossa",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 1,
+    "freq_week_min": 1,
+    "freq_week_max": 1
+   },
+   "carne_bianca": {
+    "portion_g": 100,
+    "basis": "crudo",
+    "label": "pollo, tacchino, coniglio",
+    "freq_group": "carne_bianca",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 2,
+    "freq_week_min": 1,
+    "freq_week_max": 3
+   },
+   "salumi": {
+    "portion_g": 50,
+    "basis": "pronto",
+    "label": "carne conservata (salumi, affettati)",
+    "freq_group": "salumi",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": null,
+    "freq_week_min": null,
+    "freq_week_max": null
+   },
+   "pesce": {
+    "portion_g": 150,
+    "basis": "crudo",
+    "label": "pesce, molluschi, crostacei freschi o surgelati",
+    "freq_group": "pesce",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 2,
+    "freq_week_min": 2,
+    "freq_week_max": 3
+   },
+   "pesce_conservato": {
+    "portion_g": 50,
+    "basis": "pronto",
+    "label": "pesce conservato (peso sgocciolato)",
+    "freq_group": "pesce_conservato",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 1,
+    "freq_week_min": 0,
+    "freq_week_max": 1
+   },
+   "uova": {
+    "portion_g": 50,
+    "basis": "crudo",
+    "label": "1 uovo",
+    "freq_group": "uova",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 3,
+    "freq_week_min": 2,
+    "freq_week_max": 4
+   },
+   "legumi_secchi": {
+    "portion_g": 50,
+    "basis": "crudo",
+    "label": "legumi secchi",
+    "freq_group": "legumi",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 3,
+    "freq_week_min": 3,
+    "freq_week_max": 3
+   },
+   "legumi_freschi": {
+    "portion_g": 150,
+    "basis": "any",
+    "label": "legumi freschi, surgelati o in scatola (peso sgocciolato)",
+    "freq_group": "legumi",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 3,
+    "freq_week_min": 3,
+    "freq_week_max": 3
+   },
+   "proteine_vegetali": {
+    "portion_g": 100,
+    "basis": "pronto",
+    "label": "derivati della soia (tofu, tempeh): 100 g",
+    "freq_group": "legumi",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 3,
+    "freq_week_min": 3,
+    "freq_week_max": 3
+   },
+   "latte": {
+    "portion_g": 125,
+    "basis": "pronto",
+    "label": "latte (mL)",
+    "freq_group": "latte_yogurt",
+    "freq_day": 3,
+    "freq_day_min": 3,
+    "freq_day_max": 3,
+    "freq_week": 21,
+    "freq_week_min": 21,
+    "freq_week_max": 21
+   },
+   "yogurt": {
+    "portion_g": 125,
+    "basis": "pronto",
+    "label": "yogurt",
+    "freq_group": "latte_yogurt",
+    "freq_day": 3,
+    "freq_day_min": 3,
+    "freq_day_max": 3,
+    "freq_week": 21,
+    "freq_week_min": 21,
+    "freq_week_max": 21
+   },
+   "formaggio_fresco": {
+    "portion_g": 100,
+    "basis": "pronto",
+    "label": "formaggio fresco",
+    "freq_group": "formaggi",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 3,
+    "freq_week_min": 3,
+    "freq_week_max": 3
+   },
+   "formaggio_stagionato": {
+    "portion_g": 50,
+    "basis": "pronto",
+    "label": "formaggio stagionato",
+    "freq_group": "formaggi",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 3,
+    "freq_week_min": 3,
+    "freq_week_max": 3
+   },
+   "olio": {
+    "portion_g": 10,
+    "basis": "pronto",
+    "label": "olio (10 mL, 1 cucchiaio)",
+    "freq_group": "grassi",
+    "freq_day": 3,
+    "freq_day_min": 2,
+    "freq_day_max": 4,
+    "freq_week": 21,
+    "freq_week_min": 14,
+    "freq_week_max": 28
+   },
+   "burro": {
+    "portion_g": 10,
+    "basis": "pronto",
+    "label": "burro",
+    "freq_group": "grassi",
+    "freq_day": 3,
+    "freq_day_min": 2,
+    "freq_day_max": 4,
+    "freq_week": 21,
+    "freq_week_min": 14,
+    "freq_week_max": 28
+   },
+   "frutta_secca": {
+    "portion_g": 30,
+    "basis": "pronto",
+    "label": "frutta secca in guscio e semi oleosi",
+    "freq_group": "frutta_secca",
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": 2,
+    "freq_week_min": 1,
+    "freq_week_max": 2.5
+   },
+   "bevande": {
+    "portion_g": 200,
+    "basis": "pronto",
+    "label": "spremute, succhi di frutta (mL)",
+    "freq_group": null,
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": null,
+    "freq_week_min": null,
+    "freq_week_max": null
+   },
+   "dolciumi": {
+    "portion_g": 30,
+    "basis": "pronto",
+    "label": "snack, barrette, cioccolato (30 g); torte e gelati 100 g; miele e marmellata 20 g",
+    "freq_group": null,
+    "freq_day": null,
+    "freq_day_min": null,
+    "freq_day_max": null,
+    "freq_week": null,
+    "freq_week_min": null,
+    "freq_week_max": null
+   }
+  },
+  "notes": [
+   "freq_group: groups with the same freq_group share one frequency (e.g. legumi secchi and legumi in scatola together 3 per week).",
+   "portion_g is the net (edible) weight; foods carry edible_fraction for the gross weight.",
+   "Frequencies are for adults; salumi, bevande and dolciumi have no frequency in CREA 2018."
+  ]
+ },
  "foods": [
   {
    "id": "19041",
    "name_it": "Latte, parzialmente scremato, UHT",
    "name_en": "Milk, semi-skimmed, UHT",
+   "display_name_it": "Latte parzialmente scremato",
+   "display_name_en": "Semi-skimmed milk",
    "group": "milk and milk products",
    "subgroup": "milk from cow, liquid (not concentrated)",
    "family": "latte",
@@ -65,10 +423,12 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 125,
-    "min_g": 75,
-    "max_g": 250,
+    "min_g": 62,
+    "max_g": 188,
     "household": "BICCHIERE PICCOLO"
    },
    "per100g": {
@@ -92,13 +452,15 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "latte",
+   "priority": 10,
    "pairs_with": [
-    "7300",
-    "9313"
+    "7300"
    ],
    "substitutes": [
+    "19201",
     "19051",
-    "18901"
+    "18905"
    ],
    "common": true,
    "review": {
@@ -111,6 +473,8 @@
    "id": "19051",
    "name_it": "Latte, scremato, pastorizzato",
    "name_en": "Milk, skimmed, pasteurised",
+   "display_name_it": "Latte scremato",
+   "display_name_en": "Skimmed milk",
    "group": "milk and milk products",
    "subgroup": "milk from cow, liquid (not concentrated)",
    "family": "latte",
@@ -128,10 +492,12 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 125,
-    "min_g": 75,
-    "max_g": 250,
+    "min_g": 62,
+    "max_g": 188,
     "household": "BICCHIERE PICCOLO"
    },
    "per100g": {
@@ -155,13 +521,14 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "latte",
+   "priority": 6,
    "pairs_with": [
-    "7300",
-    "9313"
+    "7300"
    ],
    "substitutes": [
-    "19041",
-    "2013"
+    "19201",
+    "19041"
    ],
    "common": true,
    "review": {
@@ -171,12 +538,14 @@
    }
   },
   {
-   "id": "18901",
-   "name_it": "Bevanda alla soia, semplice, arricchita con calcio, preconfezionata",
-   "name_en": "Soy drink, plain, fortified with calcium, prepacked",
-   "group": "beverages",
-   "subgroup": "plant-based drinks",
-   "family": "bevanda di soia",
+   "id": "19201",
+   "name_it": "Latte di capra, parzialmente scremato, pastorizzato UHT",
+   "name_en": "Goat milk, half skimmed, UHT pasteurized",
+   "display_name_it": "Latte di capra",
+   "display_name_en": "Goat milk",
+   "group": "milk and milk products",
+   "subgroup": "milk, other than from cow",
+   "family": "latte",
    "role": "bevanda_colazione",
    "meals": {
     "colazione": 10,
@@ -191,38 +560,44 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 200,
-    "min_g": 100,
-    "max_g": 300,
-    "household": "LATTINA"
+    "typical_g": 125,
+    "min_g": 62,
+    "max_g": 188,
+    "household": "BICCHIERE PICCOLO"
    },
    "per100g": {
-    "kcal": 44.2,
-    "protein": 3.42,
-    "carbs": 2.18,
-    "sugars": 2.18,
-    "fat": 2.05,
-    "fiber": 1.0,
-    "salt": 0.097
+    "kcal": 45.8,
+    "protein": 3.77,
+    "carbs": 4.13,
+    "sugars": 4.13,
+    "fat": 1.57,
+    "fiber": 0.0,
+    "salt": 0.15
    },
    "diet": {
-    "vegan": true,
+    "vegan": false,
     "vegetarian": true
    },
    "allergens": [
-    "soia"
+    "latte"
    ],
    "indices": {
-    "nova": 4,
+    "nova": 3,
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "latte",
+   "priority": 2,
    "pairs_with": [
-    "7300",
-    "9313"
+    "7300"
    ],
-   "substitutes": [],
+   "substitutes": [
+    "19041",
+    "19051"
+   ],
    "common": true,
    "review": {
     "status": "auto",
@@ -231,9 +606,79 @@
    }
   },
   {
-   "id": "18904",
-   "name_it": "Bevanda a base di riso, liscia, preconfezionata",
-   "name_en": "Rice-based drink, plain, prepacked",
+   "id": "18107",
+   "name_it": "Bevanda alla mandorla non dolce, non fortificata, preconfezionata",
+   "name_en": "Almond drink not sweet, not fortified, prepacked",
+   "display_name_it": "Bevanda di mandorla",
+   "display_name_en": "Almond drink",
+   "group": "beverages",
+   "subgroup": "plant-based drinks",
+   "family": "bevanda di mandorla",
+   "role": "bevanda_colazione",
+   "meals": {
+    "colazione": 10,
+    "spuntino": 6,
+    "pranzo": 0,
+    "cena": 0
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 125,
+    "min_g": 62,
+    "max_g": 188,
+    "household": "LATTINA"
+   },
+   "per100g": {
+    "kcal": 36.3,
+    "protein": 1.06,
+    "carbs": 0.68,
+    "sugars": null,
+    "fat": 3.2,
+    "fiber": null,
+    "salt": 0.051
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [
+    "frutta_a_guscio"
+   ],
+   "indices": {
+    "nova": 4,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "latte",
+   "priority": 3,
+   "pairs_with": [
+    "7300",
+    "19693"
+   ],
+   "substitutes": [
+    "18905"
+   ],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.9,
+    "notes": ""
+   }
+  },
+  {
+   "id": "18905",
+   "name_it": "Bevanda a base di avena, liscia, preconfezionata",
+   "name_en": "Oat-based drink, plain, prepacked",
+   "display_name_it": "Bevanda di avena",
+   "display_name_en": "Oat drink",
    "group": "beverages",
    "subgroup": "plant-based drinks",
    "family": "bevanda",
@@ -251,38 +696,41 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 200,
-    "min_g": 100,
-    "max_g": 300,
+    "typical_g": 125,
+    "min_g": 62,
+    "max_g": 188,
     "household": "LATTINA"
    },
    "per100g": {
-    "kcal": 53.7,
+    "kcal": 42.6,
     "protein": 0.0,
-    "carbs": 10.8,
-    "sugars": 5.6,
-    "fat": 1.0,
+    "carbs": 7.8,
+    "sugars": 5.0,
+    "fat": 1.1,
     "fiber": null,
-    "salt": 0.074
+    "salt": 0.066
    },
    "diet": {
     "vegan": true,
     "vegetarian": true
    },
-   "allergens": [],
+   "allergens": [
+    "glutine"
+   ],
    "indices": {
     "nova": 4,
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "latte",
+   "priority": 3,
    "pairs_with": [
-    "7300",
-    "9313"
+    "7300"
    ],
-   "substitutes": [
-    "2013"
-   ],
+   "substitutes": [],
    "common": true,
    "review": {
     "status": "auto",
@@ -291,66 +739,11 @@
    }
   },
   {
-   "id": "2013",
-   "name_it": "Succo d'arancia, fatto in casa",
-   "name_en": "Orange juice, home-made",
-   "group": "beverages",
-   "subgroup": "juices",
-   "family": "succo",
-   "role": "bevanda_colazione",
-   "meals": {
-    "colazione": 9,
-    "spuntino": 8,
-    "pranzo": 0,
-    "cena": 0
-   },
-   "seasons": [
-    "inverno",
-    "primavera",
-    "estate",
-    "autunno"
-   ],
-   "preparation": "pronto",
-   "portion": {
-    "typical_g": 200,
-    "min_g": 100,
-    "max_g": 300,
-    "household": "BICCHIERE MEDIO"
-   },
-   "per100g": {
-    "kcal": 42.6,
-    "protein": 0.7,
-    "carbs": 9.4,
-    "sugars": 8.4,
-    "fat": 0.2,
-    "fiber": 0.2,
-    "salt": 0.003
-   },
-   "diet": {
-    "vegan": true,
-    "vegetarian": true
-   },
-   "allergens": [],
-   "indices": {
-    "nova": 1,
-    "glycemic": null,
-    "inflammatory": null
-   },
-   "pairs_with": [],
-   "substitutes": [
-    "18904"
-   ],
-   "common": true,
-   "review": {
-    "status": "auto",
-    "confidence": 0.8,
-    "notes": "kcal stimate dai macronutrienti (fattori UE 1169/2011)"
-   }
-  },
-  {
    "id": "7300",
    "name_it": "Fette biscottate",
    "name_en": "Rusk",
+   "display_name_it": "Fette biscottate",
+   "display_name_en": "Rusks",
    "group": "cereal products",
    "subgroup": "rusks",
    "family": "fette biscottate",
@@ -368,10 +761,17 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "unit": {
+    "it": "fetta biscottata",
+    "en": "rusk",
+    "grams": 8
+   },
    "portion": {
     "typical_g": 30,
-    "min_g": 10,
-    "max_g": 60,
+    "min_g": 15,
+    "max_g": 45,
     "household": "FETTA"
    },
    "per100g": {
@@ -395,9 +795,14 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [],
+   "larn_group": "sostituti_pane",
+   "priority": 9,
+   "pairs_with": [
+    "18107"
+   ],
    "substitutes": [
-    "7352"
+    "7352",
+    "32002"
    ],
    "common": true,
    "review": {
@@ -410,6 +815,8 @@
    "id": "7352",
    "name_it": "Pane testurizzato di riso soffiato, integrale",
    "name_en": "Puffed rice textured bread, wholemeal",
+   "display_name_it": "Gallette di riso",
+   "display_name_en": "Rice cakes",
    "group": "cereal products",
    "subgroup": "rusks",
    "family": "pane",
@@ -427,10 +834,12 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 50,
-    "min_g": 30,
-    "max_g": 80,
+    "typical_g": 30,
+    "min_g": 15,
+    "max_g": 45,
     "household": "PANINO"
    },
    "per100g": {
@@ -452,11 +861,14 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "sostituti_pane",
+   "priority": 5,
    "pairs_with": [
-    "22010"
+    "20504"
    ],
    "substitutes": [
-    "7300"
+    "7300",
+    "32002"
    ],
    "common": true,
    "review": {
@@ -466,12 +878,14 @@
    }
   },
   {
-   "id": "32141",
-   "name_it": "Muesli, scaglie, non arricchito con vitamine ed elementi chimici (alimento medio)",
-   "name_en": "Muesli, flakes, not fortified with vitamins and chemical elements (average food)",
+   "id": "32002",
+   "name_it": "Cereali da colazione, ricchi di fibre, con o senza frutta, arricchiti con vitamine ed elementi chimici",
+   "name_en": "Breakfast cereals, rich in fibre, with or without fruits, fortified with vitamins and chemical elements",
+   "display_name_it": "Cereali integrali da colazione",
+   "display_name_en": "High fibre breakfast cereals",
    "group": "sugar and confectionery",
    "subgroup": "breakfast cereals",
-   "family": "muesli",
+   "family": "cereali",
    "role": "base_colazione",
    "meals": {
     "colazione": 10,
@@ -486,20 +900,22 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 30,
-    "min_g": 20,
-    "max_g": 50,
+    "min_g": 15,
+    "max_g": 45,
     "household": "CUCCHIAIO"
    },
    "per100g": {
-    "kcal": 401.0,
-    "protein": 9.2,
-    "carbs": 60.7,
-    "sugars": 21.1,
-    "fat": 11.6,
-    "fiber": 9.88,
-    "salt": 0.22
+    "kcal": 360.0,
+    "protein": 11.5,
+    "carbs": 59.3,
+    "sugars": 22.1,
+    "fat": 4.42,
+    "fiber": 18.3,
+    "salt": 1.27
    },
    "diet": {
     "vegan": true,
@@ -509,10 +925,12 @@
     "glutine"
    ],
    "indices": {
-    "nova": 3,
+    "nova": 4,
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "cereali_colazione",
+   "priority": 4,
    "pairs_with": [],
    "substitutes": [],
    "common": true,
@@ -523,69 +941,11 @@
    }
   },
   {
-   "id": "9313",
-   "name_it": "Fiocchi d'avena, bolliti/cotti in acqua",
-   "name_en": "Oat flakes, boiled/cooked in water",
-   "group": "cereal products",
-   "subgroup": "pasta, rice and grains, cooked",
-   "family": "fiocchi",
-   "role": "base_colazione",
-   "meals": {
-    "colazione": 10,
-    "spuntino": 6,
-    "pranzo": 0,
-    "cena": 0
-   },
-   "seasons": [
-    "inverno",
-    "primavera",
-    "estate",
-    "autunno"
-   ],
-   "preparation": "bollito",
-   "portion": {
-    "typical_g": 150,
-    "min_g": 100,
-    "max_g": 180,
-    "household": "PIATTO"
-   },
-   "per100g": {
-    "kcal": 75.5,
-    "protein": 2.54,
-    "carbs": 11.9,
-    "sugars": 0.27,
-    "fat": 1.52,
-    "fiber": 1.7,
-    "salt": 0.01
-   },
-   "diet": {
-    "vegan": true,
-    "vegetarian": true
-   },
-   "allergens": [
-    "glutine"
-   ],
-   "indices": {
-    "nova": 1,
-    "glycemic": null,
-    "inflammatory": null
-   },
-   "pairs_with": [],
-   "substitutes": [
-    "7300",
-    "7352"
-   ],
-   "common": true,
-   "review": {
-    "status": "auto",
-    "confidence": 0.9,
-    "notes": ""
-   }
-  },
-  {
-   "id": "24041",
-   "name_it": "Biscotto da colazione (biscotto) con cereali, arricchito con vitamine ed elementi chimici",
-   "name_en": "Breakfast biscuit (cookie) with cereals, fortified with vitamins and chemical elements",
+   "id": "24034",
+   "name_it": "Biscotto per la colazione (biscotto)",
+   "name_en": "Breakfast biscuit (cookie)",
+   "display_name_it": "Biscotti da colazione",
+   "display_name_en": "Breakfast biscuits",
    "group": "sugar and confectionery",
    "subgroup": "sweet biscuits",
    "family": "biscotti",
@@ -603,6 +963,8 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 30,
     "min_g": 15,
@@ -610,13 +972,13 @@
     "household": "BISCOTTO"
    },
    "per100g": {
-    "kcal": 445.0,
-    "protein": 7.44,
-    "carbs": 67.7,
-    "sugars": 23.4,
-    "fat": 15.7,
-    "fiber": 5.3,
-    "salt": 0.87
+    "kcal": 452.1,
+    "protein": 7.81,
+    "carbs": 65.8,
+    "sugars": 21.0,
+    "fat": 16.3,
+    "fiber": 5.5,
+    "salt": 1.19
    },
    "diet": {
     "vegan": false,
@@ -632,21 +994,92 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "dolci_forno",
+   "priority": 8,
+   "pairs_with": [
+    "18107"
+   ],
+   "substitutes": [],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.8,
+    "notes": "kcal stimate dai macronutrienti (fattori UE 1169/2011)"
+   }
+  },
+  {
+   "id": "23490",
+   "name_it": "torta di mele",
+   "name_en": "Apple tart",
+   "display_name_it": "Torta di mele",
+   "display_name_en": "Apple cake",
+   "group": "sugar and confectionery",
+   "subgroup": "cakes and pastry",
+   "family": "mela",
+   "role": "base_colazione",
+   "meals": {
+    "colazione": 10,
+    "spuntino": 6,
+    "pranzo": 0,
+    "cena": 0
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 50,
+    "min_g": 25,
+    "max_g": 75,
+    "household": "FETTA"
+   },
+   "per100g": {
+    "kcal": 226.6,
+    "protein": 2.52,
+    "carbs": 32.7,
+    "sugars": 20.7,
+    "fat": 8.79,
+    "fiber": 3.3,
+    "salt": 0.31
+   },
+   "diet": {
+    "vegan": false,
+    "vegetarian": true
+   },
+   "allergens": [
+    "glutine",
+    "uova",
+    "latte"
+   ],
+   "indices": {
+    "nova": 3,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "dolci_forno",
+   "priority": 4,
    "pairs_with": [],
    "substitutes": [
-    "32141"
+    "24034"
    ],
    "common": true,
    "review": {
     "status": "auto",
-    "confidence": 0.85,
-    "notes": ""
+    "confidence": 0.8,
+    "notes": "kcal stimate dai macronutrienti (fattori UE 1169/2011)"
    }
   },
   {
    "id": "13039",
    "name_it": "Mela, polpa e buccia, cruda",
    "name_en": "Apple, pulp and peel, raw",
+   "display_name_it": "Mela",
+   "display_name_en": "Apple",
    "group": "fruits, vegetables, legumes and nuts",
    "subgroup": "fresh fruits",
    "family": "mela",
@@ -663,10 +1096,17 @@
     "autunno"
    ],
    "preparation": "crudo",
+   "weight_basis": "crudo",
+   "edible_fraction": 0.85,
+   "unit": {
+    "it": "mela",
+    "en": "apple",
+    "grams": 180
+   },
    "portion": {
-    "typical_g": 150,
-    "min_g": 100,
-    "max_g": 200,
+    "typical_g": 180,
+    "min_g": 90,
+    "max_g": 180,
     "household": "FRUTTO"
    },
    "per100g": {
@@ -688,6 +1128,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "frutta",
+   "priority": 10,
    "pairs_with": [],
    "substitutes": [
     "13002"
@@ -703,6 +1145,8 @@
    "id": "13040",
    "name_it": "Pompelmo, polpa, cruda",
    "name_en": "Grapefruit, pulp, raw",
+   "display_name_it": "Pompelmo",
+   "display_name_en": "Grapefruit",
    "group": "fruits, vegetables, legumes and nuts",
    "subgroup": "fresh fruits",
    "family": "pompelmo",
@@ -718,10 +1162,17 @@
     "primavera"
    ],
    "preparation": "crudo",
+   "weight_basis": "crudo",
+   "edible_fraction": 0.7,
+   "unit": {
+    "it": "mezzo pompelmo",
+    "en": "half grapefruit",
+    "grams": 150
+   },
    "portion": {
     "typical_g": 150,
-    "min_g": 100,
-    "max_g": 200,
+    "min_g": 75,
+    "max_g": 300,
     "household": "FRUTTO"
    },
    "per100g": {
@@ -743,6 +1194,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "frutta",
+   "priority": 4,
    "pairs_with": [],
    "substitutes": [
     "13002"
@@ -758,6 +1211,8 @@
    "id": "13043",
    "name_it": "Pesca, polpa e buccia, cruda",
    "name_en": "Peach, pulp and peel, raw",
+   "display_name_it": "Pesca",
+   "display_name_en": "Peach",
    "group": "fruits, vegetables, legumes and nuts",
    "subgroup": "fresh fruits",
    "family": "pesca",
@@ -772,10 +1227,17 @@
     "estate"
    ],
    "preparation": "crudo",
+   "weight_basis": "crudo",
+   "edible_fraction": 0.95,
+   "unit": {
+    "it": "pesca",
+    "en": "peach",
+    "grams": 150
+   },
    "portion": {
     "typical_g": 150,
-    "min_g": 100,
-    "max_g": 200,
+    "min_g": 75,
+    "max_g": 150,
     "household": "FRUTTO"
    },
    "per100g": {
@@ -797,6 +1259,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "frutta",
+   "priority": 8,
    "pairs_with": [],
    "substitutes": [],
    "common": true,
@@ -810,6 +1274,8 @@
    "id": "13112",
    "name_it": "Uva, cruda",
    "name_en": "Grape, raw",
+   "display_name_it": "Uva",
+   "display_name_en": "Grapes",
    "group": "fruits, vegetables, legumes and nuts",
    "subgroup": "fresh fruits",
    "family": "uva",
@@ -825,10 +1291,12 @@
     "autunno"
    ],
    "preparation": "crudo",
+   "weight_basis": "crudo",
+   "edible_fraction": 0.94,
    "portion": {
-    "typical_g": 120,
+    "typical_g": 160,
     "min_g": 80,
-    "max_g": 150,
+    "max_g": 160,
     "household": "CHICCHO"
    },
    "per100g": {
@@ -850,6 +1318,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "frutta",
+   "priority": 7,
    "pairs_with": [],
    "substitutes": [],
    "common": true,
@@ -863,6 +1333,8 @@
    "id": "13002",
    "name_it": "Ananas, polpa, cruda",
    "name_en": "Pineapple, pulp, raw",
+   "display_name_it": "Ananas",
+   "display_name_en": "Pineapple",
    "group": "fruits, vegetables, legumes and nuts",
    "subgroup": "fresh fruits",
    "family": "ananas",
@@ -880,10 +1352,12 @@
     "autunno"
    ],
    "preparation": "crudo",
+   "weight_basis": "crudo",
+   "edible_fraction": 0.57,
    "portion": {
-    "typical_g": 150,
-    "min_g": 100,
-    "max_g": 200,
+    "typical_g": 263,
+    "min_g": 132,
+    "max_g": 395,
     "household": "FETTA 3CM"
    },
    "per100g": {
@@ -905,6 +1379,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "frutta",
+   "priority": 5,
    "pairs_with": [],
    "substitutes": [
     "13039"
@@ -920,6 +1396,8 @@
    "id": "19600",
    "name_it": "Yogurt semplice (medio)",
    "name_en": "Yoghurt, plain (average)",
+   "display_name_it": "Yogurt bianco",
+   "display_name_en": "Plain yogurt",
    "group": "milk and milk products",
    "subgroup": "yoghurts",
    "family": "yogurt",
@@ -937,10 +1415,17 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "unit": {
+    "it": "vasetto",
+    "en": "pot",
+    "grams": 125
+   },
    "portion": {
     "typical_g": 125,
     "min_g": 62,
-    "max_g": 180,
+    "max_g": 188,
     "household": "VASETTO"
    },
    "per100g": {
@@ -964,11 +1449,11 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [
-    "9313"
-   ],
+   "larn_group": "yogurt",
+   "priority": 9,
+   "pairs_with": [],
    "substitutes": [
-    "19694"
+    "19693"
    ],
    "common": true,
    "review": {
@@ -978,9 +1463,11 @@
    }
   },
   {
-   "id": "19694",
-   "name_it": "Dessert alla soia, semplice, arricchito con calcio, preconfezionato",
-   "name_en": "Soy dessert, plain, fortified with calcium, prepacked",
+   "id": "19693",
+   "name_it": "Dessert alla soia, semplice, non fortificato, preconfezionato",
+   "name_en": "Soy dessert, plain, not fortified, prepacked",
+   "display_name_it": "Yogurt di soia",
+   "display_name_en": "Soy yogurt",
    "group": "milk and milk products",
    "subgroup": "plant-based desserts",
    "family": "yogurt di soia",
@@ -998,20 +1485,27 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "unit": {
+    "it": "vasetto",
+    "en": "pot",
+    "grams": 125
+   },
    "portion": {
     "typical_g": 125,
-    "min_g": 100,
-    "max_g": 200,
+    "min_g": 62,
+    "max_g": 188,
     "household": "FETTA PICCOLA"
    },
    "per100g": {
-    "kcal": 42.0,
-    "protein": 3.59,
-    "carbs": 1.1,
-    "sugars": 0.27,
-    "fat": 2.1,
-    "fiber": 0.6,
-    "salt": 0.053
+    "kcal": 44.7,
+    "protein": 3.76,
+    "carbs": 2.05,
+    "sugars": 0.69,
+    "fat": 1.9,
+    "fiber": 0.8,
+    "salt": 0.085
    },
    "diet": {
     "vegan": true,
@@ -1025,10 +1519,12 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [
-    "9313"
+   "larn_group": "yogurt",
+   "priority": 4,
+   "pairs_with": [],
+   "substitutes": [
+    "15034"
    ],
-   "substitutes": [],
    "common": true,
    "review": {
     "status": "auto",
@@ -1037,12 +1533,14 @@
    }
   },
   {
-   "id": "15054",
-   "name_it": "Anacardi, grigliati, non salati",
-   "name_en": "Cashew nut, grilled, unsalted",
+   "id": "15044",
+   "name_it": "Pistacchio grigliato",
+   "name_en": "Pistachio nut, grilled",
+   "display_name_it": "Pistacchi",
+   "display_name_en": "Pistachios",
    "group": "fruits, vegetables, legumes and nuts",
    "subgroup": "nuts and seeds",
-   "family": "anacardi",
+   "family": "pistacchio",
    "role": "snack",
    "meals": {
     "colazione": 6,
@@ -1057,19 +1555,21 @@
     "autunno"
    ],
    "preparation": "alla griglia",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 30,
     "min_g": 15,
-    "max_g": 40,
+    "max_g": 45,
     "household": "CUCCHIAIO"
    },
    "per100g": {
-    "kcal": 618.0,
-    "protein": 17.4,
-    "carbs": 21.3,
-    "sugars": 6.64,
-    "fat": 48.1,
-    "fiber": 8.4,
+    "kcal": 594.8,
+    "protein": 18.4,
+    "carbs": 18.6,
+    "sugars": 7.74,
+    "fat": 47.4,
+    "fiber": 10.1,
     "salt": 0.015
    },
    "diet": {
@@ -1080,28 +1580,30 @@
     "frutta_a_guscio"
    ],
    "indices": {
-    "nova": 1,
+    "nova": 3,
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "frutta_secca",
+   "priority": 6,
    "pairs_with": [],
-   "substitutes": [
-    "15203"
-   ],
+   "substitutes": [],
    "common": true,
    "review": {
     "status": "auto",
-    "confidence": 0.9,
-    "notes": ""
+    "confidence": 0.8,
+    "notes": "kcal stimate dai macronutrienti (fattori UE 1169/2011)"
    }
   },
   {
-   "id": "15203",
-   "name_it": "Tahini (pasta di sesamo)",
-   "name_en": "Tahini (sesame paste)",
+   "id": "15034",
+   "name_it": "Semi di lino",
+   "name_en": "Flaxseed",
+   "display_name_it": "Semi di lino",
+   "display_name_en": "Flaxseeds",
    "group": "fruits, vegetables, legumes and nuts",
    "subgroup": "nuts and seeds",
-   "family": "tahini",
+   "family": "semi di lino",
    "role": "snack",
    "meals": {
     "colazione": 7,
@@ -1116,77 +1618,22 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 15,
-    "min_g": 5,
-    "max_g": 20,
+    "min_g": 8,
+    "max_g": 22,
     "household": "CUCCHIAINO"
    },
    "per100g": {
-    "kcal": 620.6,
-    "protein": 17.7,
-    "carbs": 13.8,
-    "sugars": 0.49,
-    "fat": 53.4,
-    "fiber": 7.0,
-    "salt": 0.19
-   },
-   "diet": {
-    "vegan": true,
-    "vegetarian": true
-   },
-   "allergens": [
-    "sesamo"
-   ],
-   "indices": {
-    "nova": 3,
-    "glycemic": null,
-    "inflammatory": null
-   },
-   "pairs_with": [],
-   "substitutes": [
-    "15054"
-   ],
-   "common": true,
-   "review": {
-    "status": "auto",
-    "confidence": 0.8,
-    "notes": "kcal stimate dai macronutrienti (fattori UE 1169/2011)"
-   }
-  },
-  {
-   "id": "15021",
-   "name_it": "Castagne alla griglia",
-   "name_en": "Chestnut, grilled",
-   "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "nuts and seeds",
-   "family": "castagne",
-   "role": "snack",
-   "meals": {
-    "colazione": 3,
-    "spuntino": 10,
-    "pranzo": 2,
-    "cena": 2
-   },
-   "seasons": [
-    "inverno",
-    "autunno"
-   ],
-   "preparation": "alla griglia",
-   "portion": {
-    "typical_g": 80,
-    "min_g": 50,
-    "max_g": 120,
-    "household": "CUCCHIAIO"
-   },
-   "per100g": {
-    "kcal": 234.3,
-    "protein": 3.17,
-    "carbs": 47.9,
-    "sugars": 10.6,
-    "fat": 2.2,
-    "fiber": 5.1,
-    "salt": 0.005
+    "kcal": 491.2,
+    "protein": 20.2,
+    "carbs": 6.6,
+    "sugars": 1.55,
+    "fat": 36.6,
+    "fiber": 27.3,
+    "salt": 0.051
    },
    "diet": {
     "vegan": true,
@@ -1194,12 +1641,16 @@
    },
    "allergens": [],
    "indices": {
-    "nova": 3,
+    "nova": 1,
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "frutta_secca",
+   "priority": 3,
    "pairs_with": [],
-   "substitutes": [],
+   "substitutes": [
+    "15044"
+   ],
    "common": true,
    "review": {
     "status": "auto",
@@ -1208,11 +1659,76 @@
    }
   },
   {
-   "id": "9811",
-   "name_it": "Pasta secca, cotta, senza sale",
-   "name_en": "Dried pasta, cooked, unsalted",
+   "id": "13001",
+   "name_it": "Albicocca, snocciolata, essiccata",
+   "name_en": "Apricot, pitted, dried",
+   "display_name_it": "Albicocche secche",
+   "display_name_en": "Dried apricots",
+   "group": "fruits, vegetables, legumes and nuts",
+   "subgroup": "dried fruits",
+   "family": "albicocca",
+   "role": "snack",
+   "meals": {
+    "colazione": 7,
+    "spuntino": 10,
+    "pranzo": 1,
+    "cena": 1
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "essiccato",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 30,
+    "min_g": 15,
+    "max_g": 45,
+    "household": "FRUTTO"
+   },
+   "per100g": {
+    "kcal": 239.0,
+    "protein": 2.88,
+    "carbs": 59.1,
+    "sugars": 34.3,
+    "fat": 0.5,
+    "fiber": 8.3,
+    "salt": null
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [
+    "solfiti"
+   ],
+   "indices": {
+    "nova": 1,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "frutta_essiccata",
+   "priority": 4,
+   "pairs_with": [],
+   "substitutes": [],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.9,
+    "notes": ""
+   }
+  },
+  {
+   "id": "9810",
+   "name_it": "Pasta secca, cruda",
+   "name_en": "Dried pasta, raw",
+   "display_name_it": "Pasta di semola",
+   "display_name_en": "Durum wheat pasta",
    "group": "cereal products",
-   "subgroup": "pasta, rice and grains, cooked",
+   "subgroup": "pasta, rice and grains, raw",
    "family": "pasta",
    "role": "base_principale",
    "meals": {
@@ -1227,21 +1743,23 @@
     "estate",
     "autunno"
    ],
-   "preparation": "cotto",
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 150,
-    "min_g": 50,
-    "max_g": 180,
-    "household": "PIATTO"
+    "typical_g": 80,
+    "min_g": 40,
+    "max_g": 120,
+    "household": "BICCHIERE MEDIO"
    },
    "per100g": {
-    "kcal": 126.0,
-    "protein": 3.99,
-    "carbs": 25.0,
-    "sugars": 0.6,
-    "fat": 0.55,
-    "fiber": 1.9,
-    "salt": null
+    "kcal": 336.0,
+    "protein": 11.5,
+    "carbs": 65.8,
+    "sugars": 2.12,
+    "fat": 1.79,
+    "fiber": 3.0,
+    "salt": 0.031
    },
    "diet": {
     "vegan": true,
@@ -1255,7 +1773,11 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [],
+   "larn_group": "cereali",
+   "priority": 10,
+   "pairs_with": [
+    "20504"
+   ],
    "substitutes": [],
    "common": true,
    "review": {
@@ -1265,11 +1787,13 @@
    }
   },
   {
-   "id": "9104",
-   "name_it": "Riso cotto, non salato",
-   "name_en": "Rice, cooked, unsalted",
+   "id": "9100",
+   "name_it": "Riso, crudo",
+   "name_en": "Rice, raw",
+   "display_name_it": "Riso",
+   "display_name_en": "Rice",
    "group": "cereal products",
-   "subgroup": "pasta, rice and grains, cooked",
+   "subgroup": "pasta, rice and grains, raw",
    "family": "riso",
    "role": "base_principale",
    "meals": {
@@ -1284,21 +1808,23 @@
     "estate",
     "autunno"
    ],
-   "preparation": "cotto",
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 150,
-    "min_g": 100,
-    "max_g": 250,
-    "household": "PIATTO"
+    "typical_g": 80,
+    "min_g": 40,
+    "max_g": 120,
+    "household": "CUCCHIAIO"
    },
    "per100g": {
-    "kcal": 145.0,
-    "protein": 2.92,
-    "carbs": 31.8,
-    "sugars": null,
-    "fat": 0.41,
-    "fiber": 0.8,
-    "salt": null
+    "kcal": 352.0,
+    "protein": 7.04,
+    "carbs": 78.0,
+    "sugars": 0.16,
+    "fat": 0.91,
+    "fiber": 1.05,
+    "salt": 0.006
    },
    "diet": {
     "vegan": true,
@@ -1310,7 +1836,11 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [],
+   "larn_group": "cereali",
+   "priority": 10,
+   "pairs_with": [
+    "20504"
+   ],
    "substitutes": [],
    "common": true,
    "review": {
@@ -1320,12 +1850,14 @@
    }
   },
   {
-   "id": "9341",
-   "name_it": "Quinoa, bollita/cotta in acqua, non salata",
-   "name_en": "Quinoa, boiled/cooked in water, unsalted",
+   "id": "9001",
+   "name_it": "Farro, crudo",
+   "name_en": "Spelt, raw",
+   "display_name_it": "Farro",
+   "display_name_en": "Spelt",
    "group": "cereal products",
-   "subgroup": "pasta, rice and grains, cooked",
-   "family": "quinoa",
+   "subgroup": "pasta, rice and grains, raw",
+   "family": "farro",
    "role": "base_principale",
    "meals": {
     "colazione": 0,
@@ -1339,21 +1871,90 @@
     "estate",
     "autunno"
    ],
-   "preparation": "bollito",
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 150,
-    "min_g": 100,
-    "max_g": 250,
-    "household": "PIATTO"
+    "typical_g": 80,
+    "min_g": 40,
+    "max_g": 120,
+    "household": "CUCCHIAIO"
    },
    "per100g": {
-    "kcal": 149.0,
-    "protein": 4.66,
-    "carbs": 27.9,
-    "sugars": 0.87,
-    "fat": 1.1,
-    "fiber": 3.8,
-    "salt": 0.015
+    "kcal": 344.0,
+    "protein": 14.6,
+    "carbs": 59.5,
+    "sugars": 6.68,
+    "fat": 2.43,
+    "fiber": 10.7,
+    "salt": 0.02
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [
+    "glutine"
+   ],
+   "indices": {
+    "nova": 1,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "cereali",
+   "priority": 7,
+   "pairs_with": [
+    "20504"
+   ],
+   "substitutes": [
+    "9330"
+   ],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.9,
+    "notes": ""
+   }
+  },
+  {
+   "id": "9330",
+   "name_it": "Miglio, intero",
+   "name_en": "Millet, whole",
+   "display_name_it": "Miglio",
+   "display_name_en": "Millet",
+   "group": "cereal products",
+   "subgroup": "pasta, rice and grains, raw",
+   "family": "miglio",
+   "role": "base_principale",
+   "meals": {
+    "colazione": 0,
+    "spuntino": 0,
+    "pranzo": 10,
+    "cena": 9
+   },
+   "seasons": [
+    "inverno",
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 80,
+    "min_g": 40,
+    "max_g": 120,
+    "household": "CUCCHIAIO"
+   },
+   "per100g": {
+    "kcal": 359.0,
+    "protein": 11.0,
+    "carbs": 64.3,
+    "sugars": null,
+    "fat": 4.21,
+    "fiber": 8.5,
+    "salt": 0.007
    },
    "diet": {
     "vegan": true,
@@ -1365,9 +1966,9 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [
-    "20021"
-   ],
+   "larn_group": "cereali",
+   "priority": 3,
+   "pairs_with": [],
    "substitutes": [],
    "common": true,
    "review": {
@@ -1377,9 +1978,11 @@
    }
   },
   {
-   "id": "7000",
-   "name_it": "Pane (nella media)",
-   "name_en": "Bread (average)",
+   "id": "7110",
+   "name_it": "Pane, integrale o integrale (fatto con farina tipo 150)",
+   "name_en": "Bread, wholemeal or integral bread (made with flour type 150)",
+   "display_name_it": "Pane integrale",
+   "display_name_en": "Wholemeal bread",
    "group": "cereal products",
    "subgroup": "breads",
    "family": "pane",
@@ -1397,20 +2000,27 @@
     "autunno"
    ],
    "preparation": "cotto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
+   "unit": {
+    "it": "panino",
+    "en": "bread roll",
+    "grams": 50
+   },
    "portion": {
     "typical_g": 50,
-    "min_g": 30,
-    "max_g": 120,
+    "min_g": 25,
+    "max_g": 75,
     "household": "PANINO"
    },
    "per100g": {
-    "kcal": 276.0,
-    "protein": 8.21,
-    "carbs": 54.4,
-    "sugars": 2.74,
-    "fat": 1.61,
-    "fiber": 3.84,
-    "salt": 1.28
+    "kcal": 244.0,
+    "protein": 8.38,
+    "carbs": 44.3,
+    "sugars": 2.2,
+    "fat": 1.8,
+    "fiber": 6.9,
+    "salt": 1.12
    },
    "diet": {
     "vegan": true,
@@ -1424,66 +2034,11 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "pane",
+   "priority": 8,
    "pairs_with": [
-    "22010"
+    "20504"
    ],
-   "substitutes": [
-    "9341"
-   ],
-   "common": true,
-   "review": {
-    "status": "auto",
-    "confidence": 0.9,
-    "notes": ""
-   }
-  },
-  {
-   "id": "4026",
-   "name_it": "Patate arrosto/al forno",
-   "name_en": "Potato, roasted/baked",
-   "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "potatoes and other tubers",
-   "family": "patate",
-   "role": "base_principale",
-   "meals": {
-    "colazione": 0,
-    "spuntino": 0,
-    "pranzo": 8,
-    "cena": 8
-   },
-   "seasons": [
-    "inverno",
-    "primavera",
-    "estate",
-    "autunno"
-   ],
-   "preparation": "al forno",
-   "portion": {
-    "typical_g": 200,
-    "min_g": 100,
-    "max_g": 300,
-    "household": "PIATTO"
-   },
-   "per100g": {
-    "kcal": 89.4,
-    "protein": 2.5,
-    "carbs": 18.5,
-    "sugars": 1.18,
-    "fat": 0.13,
-    "fiber": 2.2,
-    "salt": 0.025
-   },
-   "diet": {
-    "vegan": true,
-    "vegetarian": true
-   },
-   "allergens": [],
-   "indices": {
-    "nova": 1,
-    "glycemic": null,
-    "inflammatory": null
-   },
-   "pairs_with": [],
    "substitutes": [],
    "common": true,
    "review": {
@@ -1493,11 +2048,13 @@
    }
   },
   {
-   "id": "20505",
-   "name_it": "Lenticchie bollite/cotte in acqua",
-   "name_en": "Lentil, boiled/cooked in water",
+   "id": "20504",
+   "name_it": "Lenticchie secche",
+   "name_en": "Lentil, dried",
+   "display_name_it": "Lenticchie secche",
+   "display_name_en": "Dry lentils",
    "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "legumes, cooked",
+   "subgroup": "legumes, dried",
    "family": "lenticchie",
    "role": "secondo",
    "meals": {
@@ -1512,21 +2069,23 @@
     "estate",
     "autunno"
    ],
-   "preparation": "bollito",
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 150,
-    "min_g": 100,
-    "max_g": 250,
-    "household": "TAZZA PICCOLA"
+    "typical_g": 50,
+    "min_g": 25,
+    "max_g": 75,
+    "household": "CUCCHIAIO"
    },
    "per100g": {
-    "kcal": 104.1,
-    "protein": 9.02,
-    "carbs": 12.2,
-    "sugars": 1.8,
-    "fat": 0.38,
-    "fiber": 7.9,
-    "salt": 0.005
+    "kcal": 331.3,
+    "protein": 25.4,
+    "carbs": 50.6,
+    "sugars": 1.25,
+    "fat": 1.34,
+    "fiber": 7.63,
+    "salt": 0.21
    },
    "diet": {
     "vegan": true,
@@ -1538,12 +2097,13 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "legumi_secchi",
+   "priority": 9,
    "pairs_with": [
-    "7000"
+    "9001",
+    "9100"
    ],
-   "substitutes": [
-    "20589"
-   ],
+   "substitutes": [],
    "common": true,
    "review": {
     "status": "auto",
@@ -1552,18 +2112,20 @@
    }
   },
   {
-   "id": "22010",
-   "name_it": "Uovo sodo",
-   "name_en": "Egg, hard-boiled",
+   "id": "20591",
+   "name_it": "Proteine ​​della soia, testurizzate, reidratate",
+   "name_en": "Soy protein, textured, rehydrated",
+   "display_name_it": "Proteine di soia",
+   "display_name_en": "Textured soy protein",
    "group": "meat, egg and fish",
-   "subgroup": "eggs, cooked",
-   "family": "uova",
+   "subgroup": "meat substitute",
+   "family": "proteine",
    "role": "secondo",
    "meals": {
-    "colazione": 3,
+    "colazione": 0,
     "spuntino": 0,
-    "pranzo": 8,
-    "cena": 9
+    "pranzo": 9,
+    "cena": 10
    },
    "seasons": [
     "inverno",
@@ -1572,37 +2134,38 @@
     "autunno"
    ],
    "preparation": "cotto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 100,
     "min_g": 50,
     "max_g": 150,
-    "household": "UOVO"
+    "household": null
    },
    "per100g": {
-    "kcal": 134.0,
-    "protein": 13.5,
-    "carbs": 0.52,
-    "sugars": 0.52,
-    "fat": 8.62,
-    "fiber": 0.0,
-    "salt": 0.31
+    "kcal": 150.0,
+    "protein": 18.6,
+    "carbs": 7.03,
+    "sugars": 3.65,
+    "fat": 2.9,
+    "fiber": 5.61,
+    "salt": null
    },
    "diet": {
-    "vegan": false,
+    "vegan": true,
     "vegetarian": true
    },
    "allergens": [
-    "uova"
+    "soia"
    ],
    "indices": {
-    "nova": 1,
+    "nova": 4,
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [
-    "7000",
-    "20021"
-   ],
+   "larn_group": "proteine_vegetali",
+   "priority": 2,
+   "pairs_with": [],
    "substitutes": [],
    "common": true,
    "review": {
@@ -1612,11 +2175,13 @@
    }
   },
   {
-   "id": "12066",
-   "name_it": "Formaggio feta, DOP",
-   "name_en": "Feta cheese, PDO",
+   "id": "12524",
+   "name_it": "Formaggio Gorgonzola, di latte vaccino",
+   "name_en": "Gorgonzola cheese, from cow's milk",
+   "display_name_it": "Gorgonzola",
+   "display_name_en": "Gorgonzola",
    "group": "milk and milk products",
-   "subgroup": "uncured cheeses and similar",
+   "subgroup": "blue cheeses",
    "family": "formaggio",
    "role": "secondo",
    "meals": {
@@ -1632,6 +2197,8 @@
     "autunno"
    ],
    "preparation": "pronto",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 50,
     "min_g": 25,
@@ -1639,13 +2206,13 @@
     "household": "POLLICE"
    },
    "per100g": {
-    "kcal": 285.0,
-    "protein": 15.1,
-    "carbs": 0.65,
+    "kcal": 312.0,
+    "protein": 19.0,
+    "carbs": 0.0,
     "sugars": null,
-    "fat": 24.3,
+    "fat": 26.4,
     "fiber": 0.0,
-    "salt": 2.27
+    "salt": 1.77
    },
    "diet": {
     "vegan": false,
@@ -1659,19 +2226,23 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "formaggio_stagionato",
+   "priority": 6,
    "pairs_with": [],
    "substitutes": [],
    "common": true,
    "review": {
     "status": "auto",
-    "confidence": 0.9,
-    "notes": ""
+    "confidence": 0.8,
+    "notes": "macronutrienti mancanti impostati a 0: carbs"
    }
   },
   {
-   "id": "34002",
-   "name_it": "Coniglio, carne, cotto",
-   "name_en": "Rabbit, meat, cooked",
+   "id": "34001",
+   "name_it": "Coniglio, carne, cruda",
+   "name_en": "Rabbit, meat, raw",
+   "display_name_it": "Coniglio",
+   "display_name_en": "Rabbit",
    "group": "meat, egg and fish",
    "subgroup": "other meats",
    "family": "coniglio",
@@ -1688,21 +2259,23 @@
     "estate",
     "autunno"
    ],
-   "preparation": "cotto",
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 70,
+    "typical_g": 100,
     "min_g": 50,
     "max_g": 150,
     "household": "FETTINA"
    },
    "per100g": {
-    "kcal": 167.0,
-    "protein": 20.5,
-    "carbs": 0.5,
-    "sugars": null,
-    "fat": 9.2,
+    "kcal": 189.0,
+    "protein": 20.4,
+    "carbs": 0.66,
+    "sugars": 0.0,
+    "fat": 11.6,
     "fiber": 0.0,
-    "salt": 0.16
+    "salt": 0.14
    },
    "diet": {
     "vegan": false,
@@ -1714,7 +2287,11 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [],
+   "larn_group": "carne_bianca",
+   "priority": 5,
+   "pairs_with": [
+    "20020"
+   ],
    "substitutes": [],
    "common": true,
    "review": {
@@ -1724,18 +2301,20 @@
    }
   },
   {
-   "id": "20589",
-   "name_it": "Lenticchie, rosa o rosse, bollite/cotte in acqua",
-   "name_en": "Lentil, pink or red, boiled/cooked in water",
-   "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "legumes, cooked",
-   "family": "lenticchie",
+   "id": "26082",
+   "name_it": "Pesce spada, crudo",
+   "name_en": "Swordfish, raw",
+   "display_name_it": "Pesce spada",
+   "display_name_en": "Swordfish",
+   "group": "meat, egg and fish",
+   "subgroup": "fish, raw",
+   "family": "pesce",
    "role": "secondo",
    "meals": {
     "colazione": 0,
     "spuntino": 0,
-    "pranzo": 10,
-    "cena": 8
+    "pranzo": 9,
+    "cena": 10
    },
    "seasons": [
     "inverno",
@@ -1743,51 +2322,57 @@
     "estate",
     "autunno"
    ],
-   "preparation": "bollito",
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 150,
-    "min_g": 100,
-    "max_g": 250,
-    "household": "TAZZA PICCOLA"
+    "min_g": 75,
+    "max_g": 225,
+    "household": "FILETTO MEDIO"
    },
    "per100g": {
-    "kcal": 123.3,
-    "protein": 10.6,
-    "carbs": 15.0,
-    "sugars": 0.26,
-    "fat": 0.5,
-    "fiber": 8.2,
-    "salt": null
+    "kcal": 130.0,
+    "protein": 18.9,
+    "carbs": 0.0,
+    "sugars": 0.0,
+    "fat": 5.97,
+    "fiber": 0.0,
+    "salt": 0.28
    },
    "diet": {
-    "vegan": true,
-    "vegetarian": true
+    "vegan": false,
+    "vegetarian": false
    },
-   "allergens": [],
+   "allergens": [
+    "pesce"
+   ],
    "indices": {
     "nova": 1,
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "pesce",
+   "priority": 5,
    "pairs_with": [
-    "7000"
+    "20020"
    ],
-   "substitutes": [
-    "20505"
-   ],
+   "substitutes": [],
    "common": true,
    "review": {
     "status": "auto",
     "confidence": 0.8,
-    "notes": "kcal stimate dai macronutrienti (fattori UE 1169/2011)"
+    "notes": "macronutrienti mancanti impostati a 0: carbs"
    }
   },
   {
-   "id": "20021",
-   "name_it": "Zucchine o zucchine, polpa e buccia, cotte",
-   "name_en": "Courgette or zucchini, pulp and peel, cooked",
+   "id": "20020",
+   "name_it": "Zucchine o zucchine, polpa e buccia, crude",
+   "name_en": "Courgette or zucchini, pulp and peel, raw",
+   "display_name_it": "Zucchine",
+   "display_name_en": "Courgettes",
    "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "vegetables, cooked",
+   "subgroup": "vegetables, raw",
    "family": "zucchine",
    "role": "contorno",
    "meals": {
@@ -1800,21 +2385,23 @@
     "primavera",
     "estate"
    ],
-   "preparation": "cotto",
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 150,
-    "min_g": 75,
-    "max_g": 250,
+    "typical_g": 200,
+    "min_g": 100,
+    "max_g": 300,
     "household": "PIATTO"
    },
    "per100g": {
-    "kcal": 15.5,
-    "protein": 0.93,
-    "carbs": 1.4,
-    "sugars": 1.39,
-    "fat": 0.36,
-    "fiber": 1.5,
-    "salt": 0.098
+    "kcal": 16.5,
+    "protein": 1.23,
+    "carbs": 1.8,
+    "sugars": 1.79,
+    "fat": 0.26,
+    "fiber": 1.05,
+    "salt": 0.023
    },
    "diet": {
     "vegan": true,
@@ -1826,11 +2413,11 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [
-    "9341"
-   ],
+   "larn_group": "verdura",
+   "priority": 9,
+   "pairs_with": [],
    "substitutes": [
-    "20301"
+    "20200"
    ],
    "common": true,
    "review": {
@@ -1840,12 +2427,14 @@
    }
   },
   {
-   "id": "20301",
-   "name_it": "Bietola, foglia e gambo, bollita/cotta in acqua",
-   "name_en": "Swiss chard, leaf and stalk, boiled/cooked in water",
+   "id": "20053",
+   "name_it": "Melanzane, crude",
+   "name_en": "Eggplant, raw",
+   "display_name_it": "Melanzane",
+   "display_name_en": "Aubergine",
    "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "vegetables, cooked",
-   "family": "bietole",
+   "subgroup": "vegetables, raw",
+   "family": "melanzane",
    "role": "contorno",
    "meals": {
     "colazione": 0,
@@ -1854,26 +2443,26 @@
     "cena": 10
    },
    "seasons": [
-    "inverno",
-    "primavera",
     "estate",
     "autunno"
    ],
-   "preparation": "bollito",
+   "preparation": "da cuocere (peso a crudo)",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 150,
-    "min_g": 75,
-    "max_g": 250,
+    "typical_g": 200,
+    "min_g": 100,
+    "max_g": 300,
     "household": "PIATTO"
    },
    "per100g": {
-    "kcal": 16.9,
-    "protein": 0.88,
-    "carbs": 1.43,
-    "sugars": 1.0,
-    "fat": 0.3,
-    "fiber": 2.5,
-    "salt": 0.19
+    "kcal": 20.7,
+    "protein": 1.12,
+    "carbs": 2.39,
+    "sugars": 2.39,
+    "fat": 0.14,
+    "fiber": 2.7,
+    "salt": 0.006
    },
    "diet": {
     "vegan": true,
@@ -1885,63 +2474,8 @@
     "glycemic": null,
     "inflammatory": null
    },
-   "pairs_with": [
-    "17270"
-   ],
-   "substitutes": [
-    "20021"
-   ],
-   "common": true,
-   "review": {
-    "status": "auto",
-    "confidence": 0.9,
-    "notes": ""
-   }
-  },
-  {
-   "id": "20094",
-   "name_it": "Cavolo rapa, bollito/cotto in acqua",
-   "name_en": "Kohlrabi, boiled/cooked in water",
-   "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "vegetables, cooked",
-   "family": "cavolo rapa",
-   "role": "contorno",
-   "meals": {
-    "colazione": 0,
-    "spuntino": 0,
-    "pranzo": 9,
-    "cena": 10
-   },
-   "seasons": [
-    "inverno",
-    "autunno"
-   ],
-   "preparation": "bollito",
-   "portion": {
-    "typical_g": 150,
-    "min_g": 75,
-    "max_g": 250,
-    "household": "PIATTO"
-   },
-   "per100g": {
-    "kcal": 28.0,
-    "protein": 1.8,
-    "carbs": 4.4,
-    "sugars": 2.8,
-    "fat": 0.11,
-    "fiber": 1.1,
-    "salt": 0.053
-   },
-   "diet": {
-    "vegan": true,
-    "vegetarian": true
-   },
-   "allergens": [],
-   "indices": {
-    "nova": 1,
-    "glycemic": null,
-    "inflammatory": null
-   },
+   "larn_group": "verdura",
+   "priority": 7,
    "pairs_with": [
     "17270"
    ],
@@ -1954,12 +2488,75 @@
    }
   },
   {
-   "id": "20066",
-   "name_it": "Mais dolce, in scatola, sgocciolato",
-   "name_en": "Sweet corn, canned, drained",
+   "id": "20014",
+   "name_it": "Cavolo rosso, crudo",
+   "name_en": "Red cabbage, raw",
+   "display_name_it": "Cavolo rosso",
+   "display_name_en": "Red cabbage",
    "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "vegetables, cooked",
-   "family": "mais",
+   "subgroup": "vegetables, raw",
+   "family": "cavolo",
+   "role": "contorno",
+   "meals": {
+    "colazione": 0,
+    "spuntino": 0,
+    "pranzo": 9,
+    "cena": 10
+   },
+   "seasons": [
+    "inverno",
+    "autunno"
+   ],
+   "preparation": "crudo",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 200,
+    "min_g": 100,
+    "max_g": 300,
+    "household": "PIATTO"
+   },
+   "per100g": {
+    "kcal": 30.0,
+    "protein": 1.13,
+    "carbs": 4.33,
+    "sugars": 3.9,
+    "fat": 0.0,
+    "fiber": 2.8,
+    "salt": 0.035
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [],
+   "indices": {
+    "nova": 1,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "verdura",
+   "priority": 3,
+   "pairs_with": [
+    "17270"
+   ],
+   "substitutes": [],
+   "common": true,
+   "review": {
+    "status": "auto",
+    "confidence": 0.8,
+    "notes": "macronutrienti mancanti impostati a 0: fat"
+   }
+  },
+  {
+   "id": "20101",
+   "name_it": "Verdure miste, congelate, crude",
+   "name_en": "Mixed vegetables, frozen, raw",
+   "display_name_it": "Verdure miste surgelate",
+   "display_name_en": "Frozen mixed vegetables",
+   "group": "fruits, vegetables, legumes and nuts",
+   "subgroup": "vegetables, raw",
+   "family": "verdure",
    "role": "contorno",
    "meals": {
     "colazione": 0,
@@ -1973,76 +2570,23 @@
     "estate",
     "autunno"
    ],
-   "preparation": "conservato",
+   "preparation": "surgelato, da cuocere",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 200,
-    "min_g": 80,
-    "max_g": 250,
+    "min_g": 100,
+    "max_g": 300,
     "household": "PIATTO"
    },
    "per100g": {
-    "kcal": 106.0,
-    "protein": 2.82,
-    "carbs": 18.4,
-    "sugars": 5.16,
-    "fat": 1.68,
-    "fiber": 3.1,
-    "salt": 0.59
-   },
-   "diet": {
-    "vegan": true,
-    "vegetarian": true
-   },
-   "allergens": [],
-   "indices": {
-    "nova": 3,
-    "glycemic": null,
-    "inflammatory": null
-   },
-   "pairs_with": [],
-   "substitutes": [],
-   "common": true,
-   "review": {
-    "status": "auto",
-    "confidence": 0.9,
-    "notes": ""
-   }
-  },
-  {
-   "id": "20009",
-   "name_it": "Carota, cruda",
-   "name_en": "Carrot, raw",
-   "group": "fruits, vegetables, legumes and nuts",
-   "subgroup": "vegetables, raw",
-   "family": "carote",
-   "role": "contorno",
-   "meals": {
-    "colazione": 0,
-    "spuntino": 0,
-    "pranzo": 10,
-    "cena": 9
-   },
-   "seasons": [
-    "inverno",
-    "primavera",
-    "estate",
-    "autunno"
-   ],
-   "preparation": "crudo",
-   "portion": {
-    "typical_g": 200,
-    "min_g": 80,
-    "max_g": 250,
-    "household": "PIATTO"
-   },
-   "per100g": {
-    "kcal": 40.2,
-    "protein": 0.63,
-    "carbs": 7.59,
-    "sugars": 6.0,
-    "fat": 0.0,
-    "fiber": 2.7,
-    "salt": 0.11
+    "kcal": 65.1,
+    "protein": 2.26,
+    "carbs": 5.71,
+    "sugars": 2.18,
+    "fat": 2.65,
+    "fiber": 4.7,
+    "salt": 0.6
    },
    "diet": {
     "vegan": true,
@@ -2054,6 +2598,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "verdura",
+   "priority": 4,
    "pairs_with": [
     "17270"
    ],
@@ -2061,14 +2607,80 @@
    "common": true,
    "review": {
     "status": "auto",
+    "confidence": 0.9,
+    "notes": ""
+   }
+  },
+  {
+   "id": "20200",
+   "name_it": "Lattuga iceberg, cruda",
+   "name_en": "Iceberg lettuce, raw",
+   "display_name_it": "Lattuga iceberg",
+   "display_name_en": "Iceberg lettuce",
+   "group": "fruits, vegetables, legumes and nuts",
+   "subgroup": "vegetables, raw",
+   "family": "insalata",
+   "role": "contorno",
+   "meals": {
+    "colazione": 0,
+    "spuntino": 0,
+    "pranzo": 10,
+    "cena": 9
+   },
+   "seasons": [
+    "primavera",
+    "estate",
+    "autunno"
+   ],
+   "preparation": "crudo",
+   "weight_basis": "crudo",
+   "edible_fraction": 1.0,
+   "portion": {
+    "typical_g": 80,
+    "min_g": 40,
+    "max_g": 120,
+    "household": "PIATTO"
+   },
+   "per100g": {
+    "kcal": 17.8,
+    "protein": 1.01,
+    "carbs": 2.45,
+    "sugars": 1.48,
+    "fat": 0.18,
+    "fiber": 1.15,
+    "salt": 0.024
+   },
+   "diet": {
+    "vegan": true,
+    "vegetarian": true
+   },
+   "allergens": [],
+   "indices": {
+    "nova": 1,
+    "glycemic": null,
+    "inflammatory": null
+   },
+   "larn_group": "insalata",
+   "priority": 4,
+   "pairs_with": [
+    "17270"
+   ],
+   "substitutes": [
+    "20020"
+   ],
+   "common": true,
+   "review": {
+    "status": "auto",
     "confidence": 0.8,
-    "notes": "macronutrienti mancanti impostati a 0: fat"
+    "notes": "kcal stimate dai macronutrienti (fattori UE 1169/2011)"
    }
   },
   {
    "id": "17270",
    "name_it": "Olio d'oliva, extravergine",
    "name_en": "Olive oil, extra virgin",
+   "display_name_it": "Olio extravergine d'oliva",
+   "display_name_en": "Extra virgin olive oil",
    "group": "fats and oils",
    "subgroup": "vegetable oils",
    "family": "olio d'oliva",
@@ -2086,10 +2698,12 @@
     "autunno"
    ],
    "preparation": "crudo",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 10,
     "min_g": 5,
-    "max_g": 20,
+    "max_g": 15,
     "household": "CUCCHIAIO"
    },
    "per100g": {
@@ -2111,8 +2725,10 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "olio",
+   "priority": 10,
    "pairs_with": [
-    "20009"
+    "20014"
    ],
    "substitutes": [
     "17440"
@@ -2128,6 +2744,8 @@
    "id": "17440",
    "name_it": "Olio di semi di girasole",
    "name_en": "Sunflower oil",
+   "display_name_it": "Olio di semi di girasole",
+   "display_name_en": "Sunflower oil",
    "group": "fats and oils",
    "subgroup": "vegetable oils",
    "family": "olio",
@@ -2145,10 +2763,12 @@
     "autunno"
    ],
    "preparation": "crudo",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 10,
     "min_g": 5,
-    "max_g": 20,
+    "max_g": 15,
     "household": "CUCCHIAIO"
    },
    "per100g": {
@@ -2170,6 +2790,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "olio",
+   "priority": 3,
    "pairs_with": [],
    "substitutes": [
     "17270"
@@ -2185,6 +2807,8 @@
    "id": "16400",
    "name_it": "Burro, 82% di grassi, non salato",
    "name_en": "Butter, 82% fat, unsalted",
+   "display_name_it": "Burro",
+   "display_name_en": "Butter",
    "group": "fats and oils",
    "subgroup": "butters",
    "family": "burro",
@@ -2202,10 +2826,12 @@
     "autunno"
    ],
    "preparation": "crudo",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
     "typical_g": 10,
     "min_g": 5,
-    "max_g": 20,
+    "max_g": 15,
     "household": "CUCCHIAINO"
    },
    "per100g": {
@@ -2229,6 +2855,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "burro",
+   "priority": 3,
    "pairs_with": [],
    "substitutes": [
     "17270",
@@ -2246,6 +2874,8 @@
    "id": "11179",
    "name_it": "Salse, pesti, preconfezionati",
    "name_en": "Sauce, pesto, prepacked",
+   "display_name_it": "Pesto",
+   "display_name_en": "Pesto",
    "group": "miscellaneous",
    "subgroup": "warm sauces",
    "family": "pesto",
@@ -2263,10 +2893,12 @@
     "autunno"
    ],
    "preparation": "crudo",
+   "weight_basis": "pronto",
+   "edible_fraction": 1.0,
    "portion": {
-    "typical_g": 20,
-    "min_g": 10,
-    "max_g": 30,
+    "typical_g": 25,
+    "min_g": 12,
+    "max_g": 38,
     "household": "VASETTO"
    },
    "per100g": {
@@ -2291,6 +2923,8 @@
     "glycemic": null,
     "inflammatory": null
    },
+   "larn_group": "olio",
+   "priority": 3,
    "pairs_with": [],
    "substitutes": [
     "17270",
